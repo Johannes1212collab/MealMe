@@ -65,7 +65,8 @@ function App() {
         date: storedDate,
         targetCals: userMacroPlan.calories,
         consumedCals: consumedMacros.calories,
-        netDeficit: surplusDeficit
+        netDeficit: surplusDeficit,
+        meals: mealResponses
       });
 
       // Maintain trailing 7 days
@@ -114,12 +115,16 @@ function App() {
     };
 
     try {
+      const storedHistory = localStorage.getItem('mealme_weekly_history');
+      const weeklyHistory = storedHistory ? JSON.parse(storedHistory) : [];
+
       const response = await fetch(`${API_BASE_URL}/api/llm-knowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           restaurantName: userInput,
-          remainingMacros: remainingMacros
+          remainingMacros: remainingMacros,
+          weeklyHistory: weeklyHistory
         })
       });
 
@@ -273,6 +278,22 @@ function App() {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
+  const handleLogHistoricalMeal = (meal) => {
+    setConsumedMacros(prev => ({
+      calories: prev.calories + meal.macros.cals,
+      protein: prev.protein + meal.macros.protein,
+      carbs: prev.carbs + meal.macros.carbs,
+      fats: prev.fats + meal.macros.fats
+    }));
+
+    setMealResponses(prev => [...prev, {
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      desc: meal.desc || meal.name || 'Historical Meal Logged',
+      macros: meal.macros,
+      status: 'completed'
+    }]);
+  };
+
   return (
     <div className="app-container">
       <header className="header">
@@ -281,8 +302,13 @@ function App() {
       </header>
 
       <main className="main-content">
-        <Dashboard macroPlan={userMacroPlan} consumedMacros={consumedMacros} mealResponses={mealResponses} onPlanUpdate={handleUpdateProtein} />
-      </main>
+        <Dashboard
+          macroPlan={userMacroPlan}
+          consumedMacros={consumedMacros}
+          mealResponses={mealResponses}
+          onPlanUpdate={handleUpdateProtein}
+          onLogHistoricalMeal={handleLogHistoricalMeal}
+        />  </main>
 
       <div className="action-bar">
         <VoiceAgent

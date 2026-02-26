@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
  * If a user is at a massive global chain (e.g. Starbucks), we don't even need to 
  * scrape it. Gemini already knows the Starbucks menu. We just ask it directly.
  */
-export const getKnownRestaurantSuggestions = async (restaurantName, remainingMacros, API_KEY) => {
+export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, weeklyHistory, API_KEY) => {
     try {
         if (!API_KEY || API_KEY === 'your_gemini_api_key_here') {
             throw new Error("Missing valid GEMINI_API_KEY in server/.env");
@@ -15,41 +15,40 @@ export const getKnownRestaurantSuggestions = async (restaurantName, remainingMac
         const ai = new GoogleGenAI({ apiKey: API_KEY });
 
         const prompt = `
-            You are MealMe, an expert AI nutritionist assistant. The user is at a restaurant called "${restaurantName}". 
+            You are MealMe, an expert AI nutritionist assistant. The user just said: "${userInput}". 
             Their remaining daily macros are: ${JSON.stringify(remainingMacros)}. 
+            Their historical meal data for the past 7 days is: ${JSON.stringify(weeklyHistory)}.
             
-            CRITICAL INSTRUCTION ON PORTIONS: You are suggesting a SINGLE MEAL, not a full day of food. 
-            DO NOT try to completely fill their remaining macros if it results in massive, unrealistic portion sizes (e.g., suggesting 3 cheeseburgers for breakfast just because they have 1600 kcal left). 
-            A normal meal should typically be between 400-800 calories depending on their targets. Aim for a healthy, realistic single-serving portion that makes a dent in their remaining macros without going overboard.
+            Based on what the user said, determine their INTENT.
 
-            CRITICAL INSTRUCTION ON UNITS: You MUST use METRIC units exclusively for all quantities, weights, and volumes (e.g., use grams (g), milliliters (ml), kilograms (kg) instead of ounces, pounds, or fluid ounces).
-            
-            Using your internal knowledge of the standard ${restaurantName} menu, suggest 2 specific items or realistic meal combinations that fit these macros well. 
-            BE EXACT with quantities (e.g., "One double cheeseburger and a side salad").
+            SCENARIO 1: "Log Historical Meal" Intent
+            If the user is asking to re-log or eat a meal they had in the past (e.g., "Log the chicken salad from yesterday", "I'm having the same steak I had on Tuesday", "Add the pasta from earlier this week").
+            - You MUST search their 'weeklyHistory' array to find the exact meal they are referring to.
+            - If found, return exactly 1 option matching that historical meal's macros. Make the "message" acknowledge that you are logging their past meal.
+            - If not found, create 1 estimated option based on what they described, but apologize in the "message" that you couldn't find it in their history.
+
+            SCENARIO 2: "Restaurant Suggestion" Intent
+            If the user is telling you where they are currently eating or asking for ideas (e.g., "I'm at McDonald's", "What should I eat at Subway?").
+            - DO NOT try to completely fill their remaining macros if it results in massive, unrealistic portion sizes (e.g., 3 cheeseburgers). A normal meal is 400-800 calories.
+            - Suggest 2 specific items from that restaurant's common menu that fit their remaining macros reasonably well.
+            - Make the "message" a 1-2 sentence spoken recommendation telling them what to order.
+
+            CRITICAL INSTRUCTION ON UNITS: Use METRIC units exclusively for all quantities, weights, and volumes.
             
             Return in strict JSON format matching exactly this schema:
             {
-                "message": "A 1-2 sentence spoken recommendation telling the user EXACTLY what to order and why it fits.",
+                "message": "A 1-2 sentence spoken utterance for Voice TTS answering their query.",
                 "options": [
                     {
-                        "title": "Exact Food Item Name(s) and Quantity",
-                        "description": "A short sentence explaining why this specific order is a good fit.",
+                        "title": "Exact Food Name / Meal Name",
+                        "description": "A short sentence explaining why this fits or where it was pulled from.",
                         "cals": integer calories,
                         "protein": integer protein,
-                        "carbs": integer (Net Carbs. Total minus Fiber/Sugar Alcohols),
-                        "fats": integer fats,
-                        "isPerfectMatch": boolean (true if it hits protein goal perfectly)
-                    },
-                    {
-                        "title": "Exact Food Item Name(s) and Quantity",
-                        "description": "A short sentence explaining why this specific order is a good fit.",
-                        "cals": integer calories,
-                        "protein": integer protein,
-                        "carbs": integer (Net Carbs. Total minus Fiber/Sugar Alcohols),
+                        "carbs": integer (Net Carbs),
                         "fats": integer fats,
                         "isPerfectMatch": boolean
                     }
-                ]
+                ] // Provide 1 option if logging history, 2 options if suggesting from a restaurant.
             }
         `;
 

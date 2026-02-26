@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw } from 'lucide-react';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate, onLogHistoricalMeal }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
     const [weeklyHistory, setWeeklyHistory] = useState([]);
+    const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
 
     useEffect(() => {
         const saved = localStorage.getItem('mealme_weekly_history');
@@ -113,8 +114,91 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
+
+            {weeklyHistory.length > 0 && (
+                <div className="history-browser glass-panel animate-slide-up" style={{ marginTop: '20px', padding: '20px' }}>
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <CalendarDays size={18} color="var(--primary-light)" /> Meal History
+                    </h3>
+                    <div className="history-chips-container" style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                        {weeklyHistory.map((day, idx) => (
+                            <button
+                                key={idx}
+                                className={`history-chip ${selectedHistoryDate === day.date ? 'active' : ''}`}
+                                onClick={() => setSelectedHistoryDate(selectedHistoryDate === day.date ? null : day.date)}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '20px',
+                                    border: selectedHistoryDate === day.date ? '1px solid var(--primary-light)' : '1px solid rgba(255,255,255,0.1)',
+                                    background: selectedHistoryDate === day.date ? 'rgba(45, 212, 191, 0.15)' : 'var(--bg-dark)',
+                                    color: selectedHistoryDate === day.date ? 'var(--primary-light)' : 'var(--text-secondary)',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    fontFamily: 'var(--font-primary)'
+                                }}
+                            >
+                                {day.date}
+                            </button>
+                        ))}
+                    </div>
+
+                    {selectedHistoryDate && (
+                        <div className="historical-meals-list animate-slide-up" style={{ marginTop: '15px' }}>
+                            {weeklyHistory.find(d => d.date === selectedHistoryDate)?.meals?.length > 0 ? (
+                                <ul className="plan-list">
+                                    {weeklyHistory.find(d => d.date === selectedHistoryDate).meals.map((meal, index) => (
+                                        <li key={index} className="plan-item completed" style={{ marginBottom: '10px' }}>
+                                            <div className="plan-item-header" style={{ alignItems: 'flex-start' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="plan-desc" style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{meal.desc || meal.name}</div>
+                                                    {meal.macros && (
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'flex', gap: '10px' }}>
+                                                            <span>🔥 {meal.macros.cals}</span>
+                                                            <span>🥩 {meal.macros.protein}g</span>
+                                                            <span>🍞 {meal.macros.carbs}g</span>
+                                                            <span>🥑 {meal.macros.fats}g</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {meal.macros && (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (onLogHistoricalMeal) {
+                                                                onLogHistoricalMeal(meal);
+                                                                setSelectedHistoryDate(null);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, var(--primary-light) 0%, #00d2ff 100%)',
+                                                            border: 'none',
+                                                            borderRadius: '8px',
+                                                            padding: '6px 12px',
+                                                            color: '#000',
+                                                            fontWeight: '700',
+                                                            fontSize: '0.8rem',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            fontFamily: 'var(--font-primary)'
+                                                        }}
+                                                    >
+                                                        <RotateCcw size={14} /> Log
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', margin: '20px 0' }}>No meals logged on this date.</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {
                 isEditingProtein && (

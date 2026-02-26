@@ -51,8 +51,8 @@ app.post('/api/database', async (req, res) => {
 // Route 3: LLM Native Knowledge Base
 app.post('/api/llm-knowledge', async (req, res) => {
     try {
-        const { restaurantName, remainingMacros } = req.body;
-        const result = await getKnownRestaurantSuggestions(restaurantName, remainingMacros, process.env.GEMINI_API_KEY);
+        const { restaurantName, remainingMacros, weeklyHistory } = req.body;
+        const result = await getKnownRestaurantSuggestions(restaurantName, remainingMacros, weeklyHistory, process.env.GEMINI_API_KEY);
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
