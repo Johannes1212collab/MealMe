@@ -67,7 +67,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
         const prompt = mode === 'ingredients' ? ingredientsPrompt : mealPrompt;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
+            model: 'gemini-1.5-pro',
             contents: [
                 { inlineData: { mimeType: activeMimeType, data: cleanBase64 } },
                 { text: prompt }
