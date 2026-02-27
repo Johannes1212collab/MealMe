@@ -100,13 +100,20 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
             const result = await response.json();
             if (result.status === 'success' && result.data) {
                 const d = result.data;
-                setCoachPlanDraft(prev => ({
-                    calories: d.cals || prev.calories,
-                    protein: d.protein || prev.protein,
-                    carbs: d.carbs || prev.carbs,
-                    fats: d.fats || prev.fats,
-                    tdee: d.tdee || prev.tdee,
-                }));
+                setCoachPlanDraft(prev => {
+                    const protein = d.protein || prev.protein;
+                    const carbs = d.carbs || prev.carbs;
+                    const fats = d.fats || prev.fats;
+                    // Standard Atwater 4-4-9 model: 1g carb=4kcal, 1g protein=4kcal, 1g fat=9kcal
+                    const calculatedCals = Math.round((protein * 4) + (carbs * 4) + (fats * 9));
+                    return {
+                        calories: calculatedCals,
+                        protein,
+                        carbs,
+                        fats,
+                        tdee: d.tdee || prev.tdee,
+                    };
+                });
             }
         } catch (err) {
             console.error('Plan file upload error:', err);
