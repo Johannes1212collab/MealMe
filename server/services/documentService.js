@@ -23,24 +23,25 @@ export const analyzeDocument = async (base64Data, mimeType, remainingMacros, API
         const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
 
         const extractionPrompt = `
-You are an expert nutritionist AI. Carefully analyze the provided file — it may be a meal photo, nutrition label, diet plan, food receipt, restaurant menu, or any document relating to food and health.
+You are a data extraction assistant. Your ONLY job is to read the provided file and extract nutritional numbers that are explicitly written in the document.
 
-Your task is to:
-1. Identify and TOTAL all nutritional values present in the file.
-2. If multiple items are listed (e.g., a full day's meal plan, or multiple meals on a menu), SUM them all into a single combined total.
-3. If exact values are not provided, make your best professional estimation based on the context.
+STRICT RULES — you MUST follow these exactly:
+1. Extract ONLY numbers that are LITERALLY WRITTEN in the document. Do NOT estimate, infer, calculate, or adjust any value.
+2. Do NOT "correct" values that seem too high or too low. If the document says 50g fat, return 50. Not 37. Not 45. Exactly 50.
+3. If multiple days or phases are listed, extract the FIRST or PRIMARY plan values.
+4. If a value is genuinely absent from the document, return 0 for that field.
+5. NEVER use your own nutritional knowledge to override what the document says.
 
-IMPORTANT: The user currently has ${remainingMacros?.calories || 'an unspecified number of'} calories remaining for the day.
-
-Return ONLY a valid JSON object matching this exact schema (no markdown, no explanation):
+Return ONLY a valid JSON object (no markdown, no explanation):
 {
-    "name": "Short descriptive title of what was found in the file",
-    "cals": Total calories as an integer,
-    "protein": Total protein in grams as an integer,
-    "carbs": Total net carbs in grams as an integer,
-    "fats": Total fats in grams as an integer,
-    "description": "A 1-sentence TTS-friendly summary of what was found and the key totals",
-    "details": "A detailed breakdown of what was extracted from the file, including individual items if multiple were found. Use bullet points."
+    "name": "Short title describing the plan or document",
+    "cals": Exact calories as written in the document (integer),
+    "protein": Exact protein grams as written (integer),
+    "carbs": Exact carbs grams as written (integer),
+    "fats": Exact fat grams as written (integer),
+    "tdee": Exact TDEE or maintenance calories as written, or 0 if not present (integer),
+    "description": "Brief 1-sentence summary of what the document contains",
+    "details": "List of all items/values found verbatim in the document"
 }
         `.trim();
 
