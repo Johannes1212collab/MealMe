@@ -11,6 +11,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
     const [isUploadingPlan, setIsUploadingPlan] = useState(false);
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
     const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+    const [uploadError, setUploadError] = useState('');
 
     const totalWeeklyDeficit = weeklyHistory.reduce((sum, day) => sum + (day.netDeficit || 0), 0);
     const weeklyWeightLossPace = (totalWeeklyDeficit / 3500).toFixed(2);
@@ -76,6 +77,24 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
     const handlePlanFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        setUploadError('');
+
+        // File size guard: 15MB max
+        if (file.size > 15 * 1024 * 1024) {
+            setUploadError('File is too large (max 15 MB). Try compressing the PDF or taking a photo instead.');
+            if (planFileInputRef.current) planFileInputRef.current.value = '';
+            return;
+        }
+
+        // Unsupported type guard (iOS HEIC etc.)
+        const unsupported = ['image/heic', 'image/heif'];
+        if (unsupported.includes(file.type.toLowerCase())) {
+            setUploadError('HEIC/HEIF images are not supported. Please take a screenshot and upload that as a JPEG or PNG instead.');
+            if (planFileInputRef.current) planFileInputRef.current.value = '';
+            return;
+        }
+
         setIsUploadingPlan(true);
         try {
             const base64Data = await new Promise((resolve, reject) => {
@@ -84,11 +103,18 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
             const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ base64Data, mimeType: file.type, remainingMacros: {} })
+                body: JSON.stringify({ base64Data, mimeType: file.type, remainingMacros: {} }),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
             const result = await response.json();
             if (result.status === 'success' && result.data) {
                 const d = result.data;
@@ -96,18 +122,19 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     const protein = d.protein || prev.protein;
                     const carbs = d.carbs || prev.carbs;
                     const fats = d.fats || prev.fats;
-                    // Standard Atwater 4-4-9 model: 1g carb=4kcal, 1g protein=4kcal, 1g fat=9kcal
                     const calculatedCals = Math.round((protein * 4) + (carbs * 4) + (fats * 9));
-                    return {
-                        calories: calculatedCals,
-                        protein,
-                        carbs,
-                        fats,
-                        tdee: d.tdee || prev.tdee,
-                    };
+                    return { calories: calculatedCals, protein, carbs, fats, tdee: d.tdee || prev.tdee };
                 });
+                setUploadError('');
+            } else {
+                setUploadError(result.message || result.error || 'Could not extract nutrition data from this file. Try a clearer image or a different PDF.');
             }
         } catch (err) {
+            if (err.name === 'AbortError') {
+                setUploadError('Upload timed out after 30 seconds. Check your connection and try a smaller file.');
+            } else {
+                setUploadError('Upload failed — could not reach the server. Please try again.');
+            }
             console.error('Plan file upload error:', err);
         } finally {
             setIsUploadingPlan(false);
@@ -136,6 +163,12 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                 : <><Upload size={18} /> Upload Plan (PDF, image, or text)</>}
                         </button>
 
+                        {/* Error message */}
+                        {uploadError && (
+                            <div style={{ padding: '10px 14px', background: 'rgba(229,90,106,0.12)', border: '1px solid rgba(229,90,106,0.3)', borderRadius: '10px', color: '#f08090', fontSize: '0.82rem', lineHeight: 1.4 }}>
+                                ⚠️ {uploadError}
+                            </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>or enter manually</span>

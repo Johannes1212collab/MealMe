@@ -74,13 +74,23 @@ Return ONLY this JSON (no markdown fences, no Step 1 text in the output):
             ];
         }
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
-            contents,
-            config: {
-                responseMimeType: 'application/json'
+        let response;
+        const models = ['gemini-3.1-pro-preview', 'gemini-1.5-pro'];
+        let lastError;
+        for (const model of models) {
+            try {
+                response = await ai.models.generateContent({
+                    model,
+                    contents,
+                    config: { responseMimeType: 'application/json' }
+                });
+                break; // success — exit the loop
+            } catch (modelErr) {
+                lastError = modelErr;
+                console.warn(`Model ${model} failed, trying next:`, modelErr.message);
             }
-        });
+        }
+        if (!response) throw lastError;
 
         const parsedData = JSON.parse(response.text);
 
