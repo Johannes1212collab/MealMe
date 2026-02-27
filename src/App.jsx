@@ -28,6 +28,7 @@ function App() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const [session, setSession] = useState(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   // PWA install prompt
   useEffect(() => {
@@ -73,7 +74,11 @@ function App() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+        fetchProfile(session.user.id).finally(() => setIsProfileLoading(false));
+      } else {
+        setIsProfileLoading(false);
+      }
     });
 
     const {
@@ -413,6 +418,20 @@ function App() {
       synthRef.current.speak(utterance);
     }
   };
+
+  if (isProfileLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-primary)', gap: '16px'
+      }}>
+        <img src="/icon-192.png" alt="MealMe" style={{ width: 72, height: 72, borderRadius: '20px', animation: 'pulse 2s ease-in-out infinite' }} />
+        <span style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'var(--font-primary)', background: 'linear-gradient(135deg, #e79c4a 0%, #c16cf0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MealMe</span>
+        <div style={{ width: 40, height: 3, borderRadius: 3, background: 'linear-gradient(90deg, #e79c4a, #c16cf0)', animation: 'pulse 1.5s ease-in-out infinite', marginTop: 4 }} />
+      </div>
+    );
+  }
 
   if (!session) {
     return <Auth onSession={setSession} />;
