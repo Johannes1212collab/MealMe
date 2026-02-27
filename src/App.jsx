@@ -456,7 +456,10 @@ function App() {
       )}
 
       <header className="header">
-        <div className="app-logo text-gradient">MealMe</div>
+        <div className="app-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/icon-192.png" alt="MealMe" style={{ width: 30, height: 30, borderRadius: '8px', objectFit: 'cover' }} />
+          <span className="text-gradient">MealMe</span>
+        </div>
         <div className="header-actions" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           <button
             onClick={() => supabase.auth.signOut()}

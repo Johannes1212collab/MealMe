@@ -46,6 +46,7 @@ export default function Auth({ onSession }) {
         <div className="auth-wrapper">
             <div className="auth-box glass-panel animate-slide-up">
                 <div className="auth-header">
+                    <img src="/icon-192.png" alt="MealMe" style={{ width: 64, height: 64, borderRadius: '18px', objectFit: 'cover', marginBottom: '8px' }} />
                     <h1 className="text-gradient">MealMe</h1>
                     <p className="subtitle">{isLogin ? 'Welcome back to your journey' : 'Start your transformation today'}</p>
                 </div>
