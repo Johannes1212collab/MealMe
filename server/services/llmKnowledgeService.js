@@ -65,6 +65,17 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             • "What did I smash at lunch on Tuesday?"
             → Search weeklyHistory for the relevant entries. Return type "info" with a conversational spoken answer and the found meals in foundMeals.
 
+            ── NUTRITIONAL ACCURACY RULES ──
+            These rules apply to ALL intents when producing macro numbers:
+
+            1. PUBLISHED DATA FIRST: For any recognised fast-food or chain restaurant item, use the item's actual published nutritional data. Do not estimate a McDonald's Big Mac — you know it is 550 kcal, 25g protein, 43g carbs, 30g fat. Use that. Same for any other chain where authoritative data exists.
+
+            2. UPPER BOUND ALWAYS: If you must estimate (e.g., a generic "double beef cheeseburger" with no specific restaurant), always select the HIGHEST plausible value within a realistic range. Do not average. If a meal could be 820–1050 kcal, return 1050 kcal. If protein could be 48–60g, return 60g. This prevents underlogging.
+
+            3. BE DETERMINISTIC: The same meal described in different ways must always produce the same numbers. "Double cheeseburger", "double beef burger with cheese", and "two patty cheeseburger" are the same meal — they must return identical macros every single response.
+
+            4. VERIFY YOUR MATHS: calories must equal (protein × 4) + (carbs × 4) + (fats × 9). If your chosen macro values don't add up to your calorie figure, adjust calories upward to match (never downward).
+
             CRITICAL: Use METRIC units. Keep the "message" field natural and conversational — it will be read aloud by TTS.
             
             Return strict JSON matching ONE of these schemas:
