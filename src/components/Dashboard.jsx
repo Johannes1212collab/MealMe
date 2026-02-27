@@ -355,7 +355,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
 
             <div className="todays-plan glass-panel">
                 <div className="plan-header">
-                    <h3>Today's Plan</h3>
+                    <h3>Today's Log</h3>
                     <span className="badge">Active</span>
                 </div>
                 <ul className="plan-list">
