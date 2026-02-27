@@ -16,6 +16,8 @@ function App() {
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [userMacroPlan, setUserMacroPlan] = useState(null);
   const [displayName, setDisplayName] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
 
@@ -339,6 +341,19 @@ function App() {
     setUserMacroPlan(newPlan);
   };
 
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setDisplayName(trimmed);
+    setIsEditingName(false);
+    // Persist name inside the macro_plan JSON in Supabase
+    if (session && userMacroPlan) {
+      await supabase.from('profiles').update({
+        macro_plan: { ...userMacroPlan, name: trimmed }
+      }).eq('id', session.user.id);
+    }
+  };
+
   const handleFileAnalysisComplete = (data) => {
     if (!data || data.error) {
       if ('speechSynthesis' in window) {
@@ -374,10 +389,46 @@ function App() {
         <div className="header-actions" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           <button
             onClick={() => supabase.auth.signOut()}
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.85rem' }}>
             Sign Out
           </button>
-          <div className="profile-pic">A</div>
+          <div style={{ position: 'relative' }}>
+            <div
+              className="profile-pic"
+              onClick={() => { setIsEditingName(v => !v); setNameInput(displayName || ''); }}
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              title="Edit name"
+            >
+              {(displayName || session?.user?.email || '?')[0].toUpperCase()}
+            </div>
+            {isEditingName && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                background: 'rgba(21,18,32,0.98)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '14px', padding: '16px', width: '220px', zIndex: 999,
+                boxShadow: '0 16px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(16px)'
+              }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '10px', fontFamily: 'var(--font-primary)' }}>Display Name</p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveName()}
+                  placeholder="Your first name"
+                  style={{
+                    width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px', padding: '9px 12px', color: 'var(--text-primary)',
+                    fontSize: '0.9rem', fontFamily: 'var(--font-primary)', outline: 'none', marginBottom: '10px'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setIsEditingName(false)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.82rem' }}>Cancel</button>
+                  <button onClick={handleSaveName} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', background: 'var(--gradient-main)', color: '#fff', fontWeight: '700', cursor: 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.82rem' }}>Save</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
