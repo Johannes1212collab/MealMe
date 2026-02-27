@@ -3,24 +3,16 @@ import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDay
 import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, onPlanUpdate, onLogHistoricalMeal, onCoachPlanUpdate }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
-    const [weeklyHistory, setWeeklyHistory] = useState([]);
-    const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
-    const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
+
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
     const [isUploadingPlan, setIsUploadingPlan] = useState(false);
-    const planFileInputRef = useRef(null);
+    const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
+    const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
 
-    useEffect(() => {
-        const saved = localStorage.getItem('mealme_weekly_history');
-        if (saved) {
-            setWeeklyHistory(JSON.parse(saved));
-        }
-    }, []);
-
-    const totalWeeklyDeficit = weeklyHistory.reduce((sum, day) => sum + day.netDeficit, 0);
+    const totalWeeklyDeficit = weeklyHistory.reduce((sum, day) => sum + (day.netDeficit || 0), 0);
     const weeklyWeightLossPace = (totalWeeklyDeficit / 3500).toFixed(2);
 
     const toggleMealExpand = (index) => {
@@ -394,6 +386,52 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     )}
                 </ul>
             </div>
-        </div >
+
+            {/* Past 7 Days History Panel */}
+            {weeklyHistory.length > 0 && (
+                <div className="history-panel glass-panel">
+                    <div className="plan-header">
+                        <h3>Past 7 Days</h3>
+                        <CalendarDays size={16} color="var(--text-secondary)" />
+                    </div>
+                    <div className="history-days">
+                        {[...weeklyHistory].reverse().map((day, dayIdx) => (
+                            <div key={dayIdx} className="history-day">
+                                <button
+                                    className="history-day-header"
+                                    onClick={() => setSelectedHistoryDate(selectedHistoryDate === day.date ? null : day.date)}
+                                >
+                                    <span className="history-date">{day.date}</span>
+                                    <span className="history-cal-summary">{day.consumedCals || 0} kcal eaten</span>
+                                    {selectedHistoryDate === day.date ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                                {selectedHistoryDate === day.date && (
+                                    <div className="history-meals">
+                                        {(!day.meals || day.meals.length === 0) ? (
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', padding: '8px 4px' }}>No meals logged this day.</p>
+                                        ) : (
+                                            day.meals.map((meal, mIdx) => (
+                                                <div key={mIdx} className="history-meal-row">
+                                                    <div className="history-meal-info">
+                                                        <span className="history-meal-name">{meal.desc}</span>
+                                                        <span className="history-meal-time">{meal.time}</span>
+                                                    </div>
+                                                    <div className="history-meal-right">
+                                                        {meal.macros && <span className="history-meal-cals">{meal.macros.cals} kcal</span>}
+                                                        <button className="readd-btn" onClick={() => onReaddMeal && onReaddMeal(meal)}>
+                                                            <RotateCcw size={11} /> Re-add
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

@@ -18,6 +18,10 @@ function App() {
   const [displayName, setDisplayName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [weeklyHistory, setWeeklyHistory] = useState(() => {
+    const stored = localStorage.getItem('mealme_weekly_history');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
 
@@ -276,6 +280,22 @@ function App() {
     }
   };
 
+  const handleReaddMeal = (meal) => {
+    const m = meal.macros || {};
+    setConsumedMacros(prev => ({
+      calories: prev.calories + (m.cals || 0),
+      protein: prev.protein + (m.protein || 0),
+      carbs: prev.carbs + (m.carbs || 0),
+      fats: prev.fats + (m.fats || 0)
+    }));
+    setMealResponses(prev => [...prev, {
+      time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      desc: meal.desc + ' (re-added)',
+      status: 'completed',
+      macros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 }
+    }]);
+  };
+
   const handleSelectRecommendation = (selectedOption) => {
     // Accumulate the chosen AI macros into the daily consumed total
     setConsumedMacros(prev => ({
@@ -438,8 +458,9 @@ function App() {
           consumedMacros={consumedMacros}
           mealResponses={mealResponses}
           userName={displayName || session?.user?.email?.split('@')[0] || 'there'}
+          weeklyHistory={weeklyHistory}
           onPlanUpdate={handleUpdateProtein}
-          onLogHistoricalMeal={handleLogHistoricalMeal}
+          onReaddMeal={handleReaddMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
         />  </main>
 
@@ -459,6 +480,7 @@ function App() {
         onClose={() => setShowRecommendations(false)}
         suggestionData={suggestionData}
         onSelectOption={handleSelectRecommendation}
+        onReaddMeal={handleReaddMeal}
       />
 
       <CameraScanner

@@ -22,34 +22,54 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             Based on what the user said, determine their INTENT.
 
             SCENARIO 1: "Log Historical Meal" Intent
-            If the user is asking to re-log or eat a meal they had in the past (e.g., "Log the chicken salad from yesterday", "I'm having the same steak I had on Tuesday", "Add the pasta from earlier this week").
-            - You MUST search their 'weeklyHistory' array to find the exact meal they are referring to.
-            - If found, return exactly 1 option matching that historical meal's macros. Make the "message" acknowledge that you are logging their past meal.
-            - If not found, create 1 estimated option based on what they described, but apologize in the "message" that you couldn't find it in their history.
+            If the user wants to re-log or eat a meal they had in the past (e.g., "Log the chicken salad from yesterday", "I'm having the same steak as Tuesday", "Add the pasta from earlier this week").
+            - Search 'weeklyHistory' to find the exact meal. Return type "log" with 1 option matching that meal's macros.
+            - If not found, create 1 estimated option and apologise in the message.
 
             SCENARIO 2: "Restaurant Suggestion" Intent
-            If the user is telling you where they are currently eating or asking for ideas (e.g., "I'm at McDonald's", "What should I eat at Subway?").
-            - DO NOT try to completely fill their remaining macros if it results in massive, unrealistic portion sizes (e.g., 3 cheeseburgers). A normal meal is 400-800 calories.
-            - Suggest 2 specific items from that restaurant's common menu that fit their remaining macros reasonably well.
-            - Make the "message" a 1-2 sentence spoken recommendation telling them what to order.
+            If the user is at or asking about a restaurant (e.g., "I'm at McDonald's", "What should I eat at Subway?").
+            - Suggest 2 specific items. A normal meal is 400-800 calories. Return type "suggestion" with 2 options.
 
-            CRITICAL INSTRUCTION ON UNITS: Use METRIC units exclusively for all quantities, weights, and volumes.
+            SCENARIO 3: "History Info Query" Intent
+            If the user is asking WHAT they ate in the past without explicitly wanting to log it now (e.g., "What did I have for dinner yesterday?", "How many calories did I eat on Monday?", "What was my last meal?").
+            - Search 'weeklyHistory' for the relevant day and meals.
+            - Return type "info" with a clear spoken message summarising what you found.
+            - Include any matching meals in "foundMeals" so the user can optionally re-add them.
+
+            CRITICAL INSTRUCTION ON UNITS: Use METRIC units for all quantities.
             
-            Return in strict JSON format matching exactly this schema:
+            Return in strict JSON format. Choose the schema that matches the detected scenario:
+
+            For Scenario 1 or 2 (type "log" or "suggestion"):
             {
-                "message": "A 1-2 sentence spoken utterance for Voice TTS answering their query.",
+                "type": "log" | "suggestion",
+                "message": "1-2 sentence spoken utterance for TTS.",
                 "options": [
                     {
-                        "title": "Exact Food Name / Meal Name",
-                        "description": "A short sentence explaining why this fits or where it was pulled from.",
-                        "cals": integer calories,
-                        "protein": integer protein,
-                        "carbs": integer (Net Carbs),
-                        "fats": integer fats,
+                        "title": "Meal Name",
+                        "description": "Why this fits or where it was pulled from.",
+                        "cals": integer,
+                        "protein": integer,
+                        "carbs": integer,
+                        "fats": integer,
                         "isPerfectMatch": boolean
                     }
-                ] // Provide 1 option if logging history, 2 options if suggesting from a restaurant.
+                ]
             }
+
+            For Scenario 3 (type "info"):
+            {
+                "type": "info",
+                "message": "1-2 sentence spoken answer describing what you found in their history.",
+                "foundMeals": [
+                    {
+                        "time": "e.g. 7:30 PM",
+                        "desc": "Meal name as logged",
+                        "macros": { "cals": integer, "protein": integer, "carbs": integer, "fats": integer }
+                    }
+                ]
+            }
+
         `;
 
         const response = await ai.models.generateContent({

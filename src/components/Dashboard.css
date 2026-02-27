@@ -247,6 +247,132 @@
     transform: translateY(-1px);
 }
 
+/* ── Past 7 Days History Panel ───────────────────────────── */
+.history-panel {
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
+}
+
+.history-days {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.history-day {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.history-day-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-primary);
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.history-day-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.history-date {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.history-cal-summary {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-right: 4px;
+}
+
+.history-meals {
+    padding: 6px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.history-meal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.history-meal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.history-meal-name {
+    font-size: 0.84rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.history-meal-time {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.history-meal-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.history-meal-cals {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.readd-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(231, 156, 74, 0.3);
+    background: var(--primary-dim);
+    color: var(--primary-light);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.readd-btn:hover {
+    background: rgba(231, 156, 74, 0.2);
+    border-color: rgba(231, 156, 74, 0.5);
+    transform: translateY(-1px);
+}
+
+
 /* ── Today's Plan Section ────────────────────────────────── */
 .todays-plan {
     padding: var(--spacing-lg);
