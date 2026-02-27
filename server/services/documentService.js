@@ -23,25 +23,37 @@ export const analyzeDocument = async (base64Data, mimeType, remainingMacros, API
         const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
 
         const extractionPrompt = `
-You are a data extraction assistant. Your ONLY job is to read the provided file and extract nutritional numbers that are explicitly written in the document.
+You are a nutritional data parser. Analyze the provided document in TWO steps:
 
-STRICT RULES — you MUST follow these exactly:
-1. Extract ONLY numbers that are LITERALLY WRITTEN in the document. Do NOT estimate, infer, calculate, or adjust any value.
-2. Do NOT "correct" values that seem too high or too low. If the document says 50g fat, return 50. Not 37. Not 45. Exactly 50.
-3. If multiple days or phases are listed, extract the FIRST or PRIMARY plan values.
-4. If a value is genuinely absent from the document, return 0 for that field.
-5. NEVER use your own nutritional knowledge to override what the document says.
+STEP 1 — READ AND LIST:
+Find every line or cell in the document that contains a nutritional value. Write out each one EXACTLY as it appears, for example:
+- "Total Calories: 2100 kcal"
+- "Protein: 200g"
+- "Total Fat: 50g"
+- "Saturated Fat: 15g"
+- "Carbohydrates: 165g"
 
-Return ONLY a valid JSON object (no markdown, no explanation):
+STEP 2 — MAP TO JSON:
+Using ONLY the values you listed in Step 1, fill in this schema.
+CRITICAL RULES for mapping:
+- "cals": use the value labeled "Calories", "Total Calories", "Energy", or "kcal".
+- "protein": use the value labeled "Protein".
+- "carbs": use the value labeled "Carbohydrates", "Total Carbs", or "Net Carbs". Do NOT include fiber.
+- "fats": use the value labeled "Total Fat" or "Fat". Do NOT use "Saturated Fat", "Trans Fat", "Unsaturated Fat" — these are SUBTYPES, not the total.
+- "tdee": use the value labeled "TDEE", "Maintenance", "Total Daily Energy Expenditure", or 0 if absent.
+- DO NOT ESTIMATE. If you cannot find a value in Step 1, use 0.
+- DO NOT ADJUST values based on your nutritional knowledge. If the document says 50g fat, return 50.
+
+Return ONLY this JSON (no markdown fences, no Step 1 text in the output):
 {
-    "name": "Short title describing the plan or document",
-    "cals": Exact calories as written in the document (integer),
-    "protein": Exact protein grams as written (integer),
-    "carbs": Exact carbs grams as written (integer),
-    "fats": Exact fat grams as written (integer),
-    "tdee": Exact TDEE or maintenance calories as written, or 0 if not present (integer),
-    "description": "Brief 1-sentence summary of what the document contains",
-    "details": "List of all items/values found verbatim in the document"
+    "name": "Short title of the plan/document",
+    "cals": integer,
+    "protein": integer,
+    "carbs": integer,
+    "fats": integer,
+    "tdee": integer,
+    "description": "One sentence summary of the document",
+    "details": "Paste your Step 1 verbatim list here so the user can verify the extraction"
 }
         `.trim();
 
