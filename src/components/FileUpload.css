@@ -1,0 +1,81 @@
+.file-upload-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.floating-upload-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--glass-bg, rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.floating-upload-btn:hover:not(:disabled) {
+    background: rgba(45, 212, 191, 0.12);
+    border-color: rgba(45, 212, 191, 0.4);
+    color: #2dd4bf;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(45, 212, 191, 0.2);
+}
+
+.floating-upload-btn.processing {
+    border-color: rgba(45, 212, 191, 0.5);
+    color: #2dd4bf;
+    cursor: not-allowed;
+}
+
+.spin-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.upload-progress-toast {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    color: #2dd4bf;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    animation: fade-in-up 0.2s ease;
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}

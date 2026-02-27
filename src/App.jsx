@@ -11,6 +11,7 @@ import Auth from './components/Auth';
 import { supabase } from './utils/supabase';
 import { recalculateMacrosWithNewProtein } from './utils/calculations';
 import { API_BASE_URL } from './utils/api';
+import FileUpload from './components/FileUpload';
 
 function App() {
   const [isOnboarded, setIsOnboarded] = useState(false);
@@ -336,6 +337,26 @@ function App() {
     setUserMacroPlan(newPlan);
   };
 
+  const handleFileAnalysisComplete = (data) => {
+    if (!data || data.error) {
+      if ('speechSynthesis' in window) {
+        synthRef.current.cancel();
+        const utterance = new SpeechSynthesisUtterance('Sorry, I had trouble analyzing that file.');
+        synthRef.current.speak(utterance);
+      }
+      return;
+    }
+    // Reuse the same AnalysisResults modal as the camera flow
+    setAnalysisType('meal');
+    setSuggestionData(data);
+    setShowAnalysis(true);
+    if ('speechSynthesis' in window) {
+      synthRef.current.cancel();
+      const utterance = new SpeechSynthesisUtterance(data.description || `Found ${data.name}.`);
+      synthRef.current.speak(utterance);
+    }
+  };
+
   if (!session) {
     return <Auth onSession={setSession} />;
   }
@@ -373,6 +394,11 @@ function App() {
           agentState={agentState}
           onCancel={handleAgentCancel}
           onSubmit={handleAIRequest}
+        />
+        <FileUpload
+          onAnalysisComplete={handleFileAnalysisComplete}
+          remainingMacros={remainingMacros}
+          apiBaseUrl={API_BASE_URL}
         />
         <button className="floating-camera-btn" onClick={openCamera} aria-label="Scan Food">
           <Camera size={24} />

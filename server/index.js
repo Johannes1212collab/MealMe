@@ -25,6 +25,7 @@ import { analyzeFoodImage } from './services/visionService.js';
 import { getChainMenuFromDB } from './services/databaseService.js';
 import { getKnownRestaurantSuggestions } from './services/llmKnowledgeService.js';
 import { scrapeAndAnalyzeMenu } from './services/scraperService.js';
+import { analyzeDocument } from './services/documentService.js';
 
 // Route 1: Camera Vision
 app.post('/api/vision', async (req, res) => {
@@ -64,6 +65,20 @@ app.post('/api/scrape', async (req, res) => {
     try {
         const { url } = req.body;
         const result = await scrapeAndAnalyzeMenu(url, process.env.GEMINI_API_KEY);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Route 5: File / Document Upload Analyzer
+app.post('/api/analyze-file', async (req, res) => {
+    try {
+        const { base64Data, mimeType, remainingMacros } = req.body;
+        if (!base64Data || !mimeType) {
+            return res.status(400).json({ error: 'base64Data and mimeType are required' });
+        }
+        const result = await analyzeDocument(base64Data, mimeType, remainingMacros, process.env.GEMINI_API_KEY);
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
