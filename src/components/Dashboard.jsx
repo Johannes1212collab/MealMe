@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw } from 'lucide-react';
+import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw, ClipboardList } from 'lucide-react';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate, onLogHistoricalMeal }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate, onLogHistoricalMeal, onCoachPlanUpdate }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
     const [weeklyHistory, setWeeklyHistory] = useState([]);
     const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+    const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
+    const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
 
     useEffect(() => {
         const saved = localStorage.getItem('mealme_weekly_history');
@@ -52,11 +54,68 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
         }
     };
 
+    const handleSaveCoachPlan = () => {
+        if (onCoachPlanUpdate) {
+            onCoachPlanUpdate({
+                calories: parseInt(coachPlanDraft.calories) || plan.calories,
+                protein: parseInt(coachPlanDraft.protein) || plan.protein,
+                carbs: parseInt(coachPlanDraft.carbs) || plan.carbs,
+                fats: parseInt(coachPlanDraft.fats) || plan.fats,
+                tdee: parseInt(coachPlanDraft.tdee) || plan.tdee,
+            });
+        }
+        setIsEditingCoachPlan(false);
+    };
+
+    const openCoachEditor = () => {
+        setCoachPlanDraft({
+            calories: plan.calories,
+            protein: plan.protein,
+            carbs: plan.carbs,
+            fats: plan.fats,
+            tdee: plan.tdee || '',
+        });
+        setIsEditingCoachPlan(true);
+    };
+
     return (
         <div className="dashboard-container">
-            <div className="greeting">
-                <h1 className="text-gradient">Good Evening, Alex</h1>
-                <p className="subtitle">Daily Goal: {plan.tdee} kcal TDEE | Target: {plan.calories} kcal</p>
+            {isEditingCoachPlan && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ClipboardList size={20} color="var(--primary-light)" /> Coach's Plan
+                        </h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Override your macro targets with values from your coach.</p>
+                        {[['Daily Calories (kcal)', 'calories'], ['Protein (g)', 'protein'], ['Carbs (g)', 'carbs'], ['Fats (g)', 'fats'], ['TDEE (kcal)', 'tdee']].map(([label, key]) => (
+                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{label}</label>
+                                <input
+                                    type="number"
+                                    value={coachPlanDraft[key]}
+                                    onChange={(e) => setCoachPlanDraft(prev => ({ ...prev, [key]: e.target.value }))}
+                                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '1rem', fontFamily: 'var(--font-primary)' }}
+                                />
+                            </div>
+                        ))}
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                            <button onClick={() => setIsEditingCoachPlan(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>Cancel</button>
+                            <button onClick={handleSaveCoachPlan} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light) 0%, #00d2ff 100%)', color: '#000', fontWeight: '700', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>Save Plan</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className="greeting" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h1 className="text-gradient">Good Evening, Alex</h1>
+                    <p className="subtitle">Daily Goal: {plan.tdee} kcal TDEE | Target: {plan.calories} kcal</p>
+                </div>
+                <button
+                    onClick={openCoachEditor}
+                    title="Edit Coach Plan"
+                    style={{ background: 'rgba(45,212,191,0.1)', border: '1px solid rgba(45,212,191,0.3)', borderRadius: '10px', padding: '8px 14px', color: 'var(--primary-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}>
+                    <ClipboardList size={16} /> Coach Plan
+                </button>
             </div>
 
             <div className="stats-grid">

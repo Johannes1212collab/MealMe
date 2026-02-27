@@ -332,6 +332,10 @@ function App() {
     }]);
   };
 
+  const handleUpdateCoachPlan = (newPlan) => {
+    setUserMacroPlan(newPlan);
+  };
+
   if (!session) {
     return <Auth onSession={setSession} />;
   }
@@ -359,8 +363,9 @@ function App() {
           macroPlan={userMacroPlan}
           consumedMacros={consumedMacros}
           mealResponses={mealResponses}
-          onPlanUpdate={handleUpdateProtein}
+          onPlanUpdate={handleUpdateCoachPlan}
           onLogHistoricalMeal={handleLogHistoricalMeal}
+          onCoachPlanUpdate={handleUpdateCoachPlan}
         />  </main>
 
       <div className="action-bar">
