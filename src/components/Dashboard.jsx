@@ -129,7 +129,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                     <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ClipboardList size={20} color="var(--primary-light)" /> Coach's Plan
+                            <ClipboardList size={20} color="var(--primary-light)" /> Upload a Plan
                         </h3>
 
                         {/* File Upload Section */}
@@ -141,7 +141,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                         >
                             {isUploadingPlan
                                 ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Scanning file with AI...</>
-                                : <><Upload size={18} /> Scan Coach's Plan (PDF, image, or text)</>}
+                                : <><Upload size={18} /> Upload Plan (PDF, image, or text)</>}
                         </button>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -178,7 +178,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     onClick={openCoachEditor}
                     title="Edit Coach Plan"
                     style={{ background: 'var(--primary-dim)', border: '1px solid rgba(231,156,74,0.3)', borderRadius: '10px', padding: '8px 14px', color: 'var(--primary-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}>
-                    <ClipboardList size={16} /> Coach Plan
+                    <ClipboardList size={16} /> Upload a Plan
                 </button>
             </div>
 
@@ -355,7 +355,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
 
             <div className="todays-plan glass-panel">
                 <div className="plan-header">
-                    <h3>Today's Coach Plan</h3>
+                    <h3>Today's Plan</h3>
                     <span className="badge">Active</span>
                 </div>
                 <ul className="plan-list">
