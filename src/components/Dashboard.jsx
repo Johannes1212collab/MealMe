@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw, ClipboardList } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw, ClipboardList, Upload, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
 export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate, onLogHistoricalMeal, onCoachPlanUpdate }) {
@@ -9,6 +10,8 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
     const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
+    const [isUploadingPlan, setIsUploadingPlan] = useState(false);
+    const planFileInputRef = useRef(null);
 
     useEffect(() => {
         const saved = localStorage.getItem('mealme_weekly_history');
@@ -78,15 +81,68 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
         setIsEditingCoachPlan(true);
     };
 
+    const handlePlanFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setIsUploadingPlan(true);
+        try {
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Data, mimeType: file.type, remainingMacros: {} })
+            });
+            const result = await response.json();
+            if (result.status === 'success' && result.data) {
+                const d = result.data;
+                setCoachPlanDraft(prev => ({
+                    calories: d.cals || prev.calories,
+                    protein: d.protein || prev.protein,
+                    carbs: d.carbs || prev.carbs,
+                    fats: d.fats || prev.fats,
+                    tdee: d.tdee || prev.tdee,
+                }));
+            }
+        } catch (err) {
+            console.error('Plan file upload error:', err);
+        } finally {
+            setIsUploadingPlan(false);
+            if (planFileInputRef.current) planFileInputRef.current.value = '';
+        }
+    };
+
     return (
         <div className="dashboard-container">
             {isEditingCoachPlan && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ClipboardList size={20} color="var(--primary-light)" /> Coach's Plan
                         </h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Override your macro targets with values from your coach.</p>
+
+                        {/* File Upload Section */}
+                        <input ref={planFileInputRef} type="file" accept="image/*,application/pdf,text/plain,.pdf,.txt" style={{ display: 'none' }} onChange={handlePlanFileUpload} />
+                        <button
+                            onClick={() => planFileInputRef.current?.click()}
+                            disabled={isUploadingPlan}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '12px', border: '1.5px dashed rgba(45,212,191,0.4)', background: 'rgba(45,212,191,0.05)', color: isUploadingPlan ? '#2dd4bf' : 'var(--text-secondary)', cursor: isUploadingPlan ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', transition: 'all 0.2s ease', width: '100%' }}
+                        >
+                            {isUploadingPlan
+                                ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Scanning file with AI...</>
+                                : <><Upload size={18} /> Scan Coach's Plan (PDF, image, or text)</>}
+                        </button>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>or enter manually</span>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                        </div>
+
                         {[['Daily Calories (kcal)', 'calories'], ['Protein (g)', 'protein'], ['Carbs (g)', 'carbs'], ['Fats (g)', 'fats'], ['TDEE (kcal)', 'tdee']].map(([label, key]) => (
                             <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{label}</label>

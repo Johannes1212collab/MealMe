@@ -11,7 +11,6 @@ import Auth from './components/Auth';
 import { supabase } from './utils/supabase';
 import { recalculateMacrosWithNewProtein } from './utils/calculations';
 import { API_BASE_URL } from './utils/api';
-import FileUpload from './components/FileUpload';
 
 function App() {
   const [isOnboarded, setIsOnboarded] = useState(false);
@@ -394,11 +393,6 @@ function App() {
           agentState={agentState}
           onCancel={handleAgentCancel}
           onSubmit={handleAIRequest}
-        />
-        <FileUpload
-          onAnalysisComplete={handleFileAnalysisComplete}
-          remainingMacros={remainingMacros}
-          apiBaseUrl={API_BASE_URL}
         />
         <button className="floating-camera-btn" onClick={openCamera} aria-label="Scan Food">
           <Camera size={24} />
