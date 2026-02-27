@@ -10,7 +10,7 @@
 }
 
 .voice-agent-status {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     font-weight: 500;
     text-align: center;
@@ -33,6 +33,7 @@
     }
 }
 
+/* ── Voice Orb ───────────────────────────────────────────── */
 .voice-orb {
     position: relative;
     width: 72px;
@@ -50,11 +51,11 @@
 }
 
 .voice-orb:hover {
-    transform: scale(1.05);
+    transform: scale(1.06);
 }
 
 .voice-orb:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
 }
 
 .orb-core {
@@ -65,23 +66,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--bg-primary);
-    box-shadow: 0 4px 20px rgba(0, 255, 170, 0.4);
+    color: #fff;
+    box-shadow: 0 4px 22px rgba(231, 156, 74, 0.35);
     z-index: 2;
     position: relative;
     transition: all 0.3s ease;
 }
 
+/* State variants */
 .voice-orb.state-speaking .orb-core {
-    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-    box-shadow: 0 4px 20px rgba(0, 210, 255, 0.4);
+    background: linear-gradient(135deg, #c16cf0 0%, #8a45ff 100%);
+    box-shadow: 0 4px 22px rgba(193, 108, 240, 0.4);
 }
 
 .voice-orb.state-processing .orb-core {
-    background: linear-gradient(135deg, #8a2387 0%, #e94057 50%, #f27121 100%);
-    box-shadow: 0 4px 20px rgba(233, 64, 87, 0.4);
+    background: linear-gradient(135deg, #e79c4a 0%, #e55a6a 100%);
+    box-shadow: 0 4px 22px rgba(231, 156, 74, 0.4);
 }
 
+/* Ripple Rings */
 .orb-rings {
     position: absolute;
     top: 50%;
@@ -98,7 +101,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    border: 2px solid var(--accent-primary);
+    border: 1.5px solid var(--accent-primary);
     opacity: 0;
 }
 
@@ -127,7 +130,7 @@
     0% {
         width: 64px;
         height: 64px;
-        opacity: 0.8;
+        opacity: 0.6;
     }
 
     100% {
@@ -167,18 +170,19 @@
     }
 }
 
-/* NEW: Expanding Input Bar Styles */
+/* ── Expanding Input Bar ─────────────────────────────────── */
 .voice-input-bar {
     display: flex;
     align-items: center;
-    background: var(--bg-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(21, 18, 32, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: 30px;
     padding: 8px 12px;
     gap: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     width: calc(100vw - 40px);
     max-width: 400px;
+    backdrop-filter: blur(16px);
     z-index: 10;
 }
 
@@ -211,7 +215,7 @@
 }
 
 .close-bar-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text-primary);
 }
 
@@ -220,13 +224,14 @@
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 0.94rem;
     padding: 8px 4px;
     outline: none;
+    font-family: var(--font-primary);
 }
 
 .voice-text-input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-muted);
 }
 
 .mic-toggle-btn {
@@ -244,15 +249,15 @@
 }
 
 .mic-toggle-btn.listening {
-    background: rgba(0, 255, 170, 0.15);
-    color: var(--accent-primary);
-    box-shadow: 0 0 15px rgba(0, 255, 170, 0.3);
+    background: rgba(231, 156, 74, 0.12);
+    color: var(--primary-light);
+    box-shadow: 0 0 14px rgba(231, 156, 74, 0.25);
 }
 
 .send-btn {
     background: var(--gradient-main);
     border: none;
-    color: var(--bg-primary);
+    color: #fff;
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -260,16 +265,20 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.send-btn:disabled {
-    opacity: 0.5;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-secondary);
-    cursor: not-allowed;
+.send-btn:not(:disabled):hover {
+    filter: brightness(1.1);
 }
 
 .send-btn:not(:disabled):active {
     transform: scale(0.9);
+}
+
+.send-btn:disabled {
+    opacity: 0.4;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    cursor: not-allowed;
 }

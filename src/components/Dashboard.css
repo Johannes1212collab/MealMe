@@ -5,36 +5,43 @@
     margin-bottom: var(--spacing-xl);
 }
 
+/* ── Greeting ────────────────────────────────────────────── */
 .greeting {
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
 }
 
 .greeting h1 {
-    font-size: 1.8rem;
+    font-size: 1.9rem;
+    font-weight: 800;
     margin-bottom: var(--spacing-xs);
+    letter-spacing: -0.04em;
 }
 
 .subtitle {
     color: var(--text-secondary);
-    font-size: 0.95rem;
+    font-size: 0.88rem;
+    font-weight: 400;
 }
 
+/* ── Stats Grid ──────────────────────────────────────────── */
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
+    gap: 12px;
 }
 
 .stat-card {
-    padding: var(--spacing-md);
+    padding: 18px 16px;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
-    transition: transform 0.2s ease;
+    gap: 10px;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    border-radius: var(--border-radius-md);
 }
 
 .stat-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
 .stat-card.full-width {
@@ -43,34 +50,36 @@
     align-items: center;
 }
 
+/* Macro-specific icon colours */
 .stat-icon {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-tertiary);
+    font-size: 0.9rem;
 }
 
 .stat-icon.kcal {
-    color: var(--accent-warning);
-    background: rgba(255, 165, 2, 0.1);
+    color: var(--color-kcal);
+    background: rgba(244, 136, 74, 0.1);
 }
 
 .stat-icon.prot {
-    color: var(--accent-primary);
-    background: rgba(0, 255, 170, 0.1);
+    color: var(--color-protein);
+    background: rgba(193, 108, 240, 0.1);
 }
 
 .stat-icon.carbs {
-    color: var(--accent-secondary);
-    background: rgba(0, 210, 255, 0.1);
+    color: var(--color-carbs);
+    background: rgba(94, 158, 245, 0.1);
 }
 
 .stat-info {
     display: flex;
     flex-direction: column;
+    gap: 2px;
 }
 
 .stat-card.full-width .stat-info {
@@ -80,20 +89,23 @@
 }
 
 .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .ml-auto {
     margin-left: auto;
 }
 
+/* ── Interactive Protein Card ────────────────────────────── */
 .stat-card.interactive {
     cursor: pointer;
     position: relative;
@@ -103,10 +115,7 @@
 .stat-card.interactive::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: var(--gradient-main);
     opacity: 0;
     transition: opacity 0.3s ease;
@@ -114,7 +123,7 @@
 }
 
 .stat-card.interactive:hover::before {
-    opacity: 0.05;
+    opacity: 0.04;
 }
 
 .stat-card.interactive>* {
@@ -126,7 +135,7 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -135,13 +144,14 @@
     opacity: 1;
 }
 
-/* Protein Editor Panel */
+/* ── Protein Editor ──────────────────────────────────────── */
 .protein-editor {
     padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    border: 1px solid var(--accent-primary);
+    border: 1px solid rgba(193, 108, 240, 0.25);
+    border-radius: var(--border-radius-lg);
 }
 
 .editor-header {
@@ -151,12 +161,13 @@
 }
 
 .editor-header h3 {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--text-primary);
+    font-weight: 700;
 }
 
 .editor-desc {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
 }
 
@@ -164,7 +175,7 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    margin: var(--spacing-md) 0;
+    margin: var(--spacing-sm) 0;
 }
 
 .protein-slider {
@@ -172,8 +183,8 @@
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 3px;
     outline: none;
 }
@@ -184,48 +195,62 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--accent-primary);
+    background: var(--gradient-main);
     cursor: pointer;
-    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+    box-shadow: 0 0 12px rgba(231, 156, 74, 0.45);
 }
 
 .slider-val {
     font-size: 1.2rem;
     font-weight: 700;
-    min-width: 48px;
+    min-width: 52px;
     text-align: right;
+    color: var(--primary-light);
 }
 
 .editor-actions {
     display: flex;
     justify-content: flex-end;
     gap: var(--spacing-sm);
-    margin-top: var(--spacing-sm);
 }
 
 .cancel-btn,
 .save-btn {
-    padding: 8px 16px;
+    padding: 9px 18px;
     border-radius: var(--border-radius-sm);
     font-weight: 600;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
+    font-family: var(--font-primary);
+    transition: all 0.2s ease;
 }
 
 .cancel-btn {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .save-btn {
     background: var(--gradient-main);
     border: none;
-    color: var(--bg-primary);
+    color: #fff;
+    letter-spacing: 0.01em;
 }
 
+.save-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* ── Today's Plan Section ────────────────────────────────── */
 .todays-plan {
     padding: var(--spacing-lg);
+    border-radius: var(--border-radius-lg);
 }
 
 .plan-header {
@@ -236,12 +261,14 @@
 }
 
 .badge {
-    background: rgba(0, 255, 170, 0.1);
-    color: var(--accent-primary);
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
+    background: rgba(231, 156, 74, 0.1);
+    color: var(--primary-light);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
     font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .plan-list {
@@ -255,20 +282,20 @@
     display: flex;
     flex-direction: column;
     padding-bottom: var(--spacing-sm);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .plan-item-header {
     display: flex;
     gap: var(--spacing-md);
     align-items: center;
+    border-radius: 8px;
+    padding: 5px;
     transition: background 0.2s;
-    border-radius: 6px;
-    padding: 4px;
 }
 
 .plan-item-header:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .plan-item:last-child {
@@ -277,25 +304,26 @@
 }
 
 .plan-time {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     font-weight: 500;
-    min-width: 65px;
+    min-width: 60px;
 }
 
 .plan-desc {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     color: var(--text-primary);
+    font-weight: 500;
 }
 
 .plan-item.completed .plan-desc {
     text-decoration: line-through;
-    color: var(--text-secondary);
+    color: var(--text-muted);
 }
 
 .expand-icon {
     margin-left: auto;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     display: flex;
     align-items: center;
 }
@@ -304,16 +332,15 @@
     display: flex;
     gap: 12px;
     margin-top: 8px;
-    margin-left: calc(65px + var(--spacing-md) + 4px);
-    font-size: 0.8rem;
+    margin-left: calc(60px + var(--spacing-md) + 5px);
+    font-size: 0.78rem;
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
     padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .plan-item-macros span {
-    font-family: 'Space Grotesk', sans-serif;
     font-weight: 500;
 }

@@ -4,9 +4,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(10, 10, 12, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(10, 8, 16, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     z-index: 250;
     display: flex;
     flex-direction: column;
@@ -14,148 +14,215 @@
 }
 
 .analysis-panel {
-    background: var(--bg-secondary);
+    background: rgba(21, 18, 32, 0.97);
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     padding: var(--spacing-lg);
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+    box-shadow:
+        0 -12px 48px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.07);
     border-bottom: none;
 }
 
-/* Header inherited mostly from Recommendations, but repeated here for independence */
+/* Panel Header */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.agent-badge {
+    background: var(--primary-dim);
+    color: var(--primary-light);
+    border: 1px solid rgba(231, 156, 74, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.close-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(229, 90, 106, 0.12);
+    border-color: rgba(229, 90, 106, 0.3);
+    color: #e55a6a;
+}
+
+/* Image Thumbnail */
 .image-thumbnail {
     width: 100%;
-    height: 140px;
-    background: linear-gradient(135deg, var(--bg-tertiary), rgba(0, 255, 170, 0.1));
+    height: 130px;
+    background: linear-gradient(135deg, rgba(30, 26, 44, 0.8), rgba(231, 156, 74, 0.06));
     border-radius: var(--border-radius-md);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     margin-bottom: var(--spacing-md);
-    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
 .thumbnail-icon {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     margin-bottom: 8px;
 }
 
 .thumbnail-label {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 500;
 }
 
+/* Meal Information */
 .food-title {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
+    font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inline-icon {
+    color: var(--primary-light);
+    flex-shrink: 0;
 }
 
 .food-desc {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--text-secondary);
     margin-bottom: var(--spacing-lg);
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
+/* Macros Row */
 .macros-breakdown {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-sm);
+    gap: 10px;
     margin-bottom: var(--spacing-lg);
 }
 
 .macro-box {
-    background: var(--bg-tertiary);
-    padding: var(--spacing-sm);
-    border-radius: var(--border-radius-sm);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 14px 10px;
+    border-radius: 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: transform 0.2s;
+}
+
+.macro-box:hover {
+    transform: translateY(-2px);
 }
 
 .macro-box.cals {
-    color: var(--accent-warning);
+    color: var(--color-kcal);
 }
 
 .macro-box.prot {
-    color: var(--accent-primary);
+    color: var(--color-protein);
 }
 
 .macro-box.carbs {
-    color: var(--accent-secondary);
+    color: var(--color-carbs);
 }
 
 .macro-val {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .macro-lbl {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
+/* Notes Section */
 .ingredients-list {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.02);
     padding: var(--spacing-md);
     border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .ingredients-list h4 {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     margin-bottom: var(--spacing-sm);
-}
-
-.ingredients-list ul {
-    list-style-type: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.ingredients-list li {
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
 }
 
 .ingredients-list li::before {
     content: "•";
-    color: var(--accent-primary);
+    color: var(--primary-light);
     font-weight: bold;
     display: inline-block;
     width: 1em;
     margin-right: 4px;
 }
 
+/* CTA */
 .add-to-plan-btn {
     width: 100%;
     background: var(--gradient-main);
-    color: var(--bg-primary);
+    color: #fff;
     border: none;
-    border-radius: var(--border-radius-md);
-    padding: 14px;
-    font-size: 1.05rem;
+    border-radius: 16px;
+    padding: 15px;
+    font-size: 1rem;
     font-weight: 700;
+    font-family: var(--font-primary);
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 15px rgba(0, 255, 170, 0.3);
+    transition: transform 0.2s, filter 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 18px rgba(231, 156, 74, 0.25);
+}
+
+.add-to-plan-btn:hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(231, 156, 74, 0.35);
 }
 
 .add-to-plan-btn:active {
