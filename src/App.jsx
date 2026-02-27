@@ -383,7 +383,7 @@ function App() {
           macroPlan={userMacroPlan}
           consumedMacros={consumedMacros}
           mealResponses={mealResponses}
-          onPlanUpdate={handleUpdateCoachPlan}
+          onPlanUpdate={handleUpdateProtein}
           onLogHistoricalMeal={handleLogHistoricalMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
         />  </main>
