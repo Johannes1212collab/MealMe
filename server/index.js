@@ -26,6 +26,7 @@ import { getChainMenuFromDB } from './services/databaseService.js';
 import { getKnownRestaurantSuggestions } from './services/llmKnowledgeService.js';
 import { scrapeAndAnalyzeMenu } from './services/scraperService.js';
 import { analyzeDocument } from './services/documentService.js';
+import { correctFoodAnalysis } from './services/correctionService.js';
 
 // Route 1: Camera Vision
 app.post('/api/vision', async (req, res) => {
@@ -79,6 +80,20 @@ app.post('/api/analyze-file', async (req, res) => {
             return res.status(400).json({ error: 'base64Data and mimeType are required' });
         }
         const result = await analyzeDocument(base64Data, mimeType, remainingMacros, process.env.GEMINI_API_KEY);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Route 6: AI Analysis Correction
+app.post('/api/correct-analysis', async (req, res) => {
+    try {
+        const { previousResult, correctionText } = req.body;
+        if (!previousResult || !correctionText) {
+            return res.status(400).json({ error: 'previousResult and correctionText are required' });
+        }
+        const result = await correctFoodAnalysis(previousResult, correctionText, process.env.GEMINI_API_KEY);
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });

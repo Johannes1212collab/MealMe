@@ -245,27 +245,27 @@ function App() {
     }
   };
 
-  const handleAddFoodToPlan = () => {
+  const handleAddFoodToPlan = (result) => {
     setShowAnalysis(false);
-
-    // Add logic to save dynamic item
-    if (suggestionData && (suggestionData.name || suggestionData.title)) {
+    // Use the passed result (which may be corrected) or fall back to suggestionData
+    const data = result || suggestionData;
+    if (data && (data.name || data.title)) {
       setConsumedMacros(prev => ({
-        calories: prev.calories + (suggestionData.cals || 0),
-        protein: prev.protein + (suggestionData.protein || 0),
-        carbs: prev.carbs + (suggestionData.carbs || 0),
-        fats: prev.fats + (suggestionData.fats || 0)
+        calories: prev.calories + (data.cals || 0),
+        protein: prev.protein + (data.protein || 0),
+        carbs: prev.carbs + (data.carbs || 0),
+        fats: prev.fats + (data.fats || 0)
       }));
 
       setMealResponses(prev => [...prev, {
         time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-        desc: suggestionData.name || suggestionData.title,
+        desc: data.name || data.title,
         status: 'completed',
         macros: {
-          cals: suggestionData.cals || 0,
-          protein: suggestionData.protein || 0,
-          carbs: suggestionData.carbs || 0,
-          fats: suggestionData.fats || 0
+          cals: data.cals || 0,
+          protein: data.protein || 0,
+          carbs: data.carbs || 0,
+          fats: data.fats || 0
         }
       }]);
     }
@@ -416,8 +416,9 @@ function App() {
       <AnalysisResults
         isVisible={showAnalysis}
         onClose={() => setShowAnalysis(false)}
-        resultData={suggestionData} // Pass the dynamic Gemini response
+        resultData={suggestionData}
         onAdd={handleAddFoodToPlan}
+        onResultUpdate={(corrected) => setSuggestionData(corrected)}
       />
     </div>
   );
