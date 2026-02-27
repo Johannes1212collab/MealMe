@@ -7,25 +7,56 @@ import Recommendations from './components/Recommendations';
 import CameraScanner from './components/CameraScanner';
 import AnalysisResults from './components/AnalysisResults';
 import Onboarding from './components/Onboarding';
+import Auth from './components/Auth';
+import { supabase } from './utils/supabase';
 import { recalculateMacrosWithNewProtein } from './utils/calculations';
 import { API_BASE_URL } from './utils/api';
 
 function App() {
-  const [isOnboarded, setIsOnboarded] = useState(() => {
-    return localStorage.getItem('mealme_onboarded') === 'true';
-  });
-  const [userMacroPlan, setUserMacroPlan] = useState(() => {
-    const saved = localStorage.getItem('mealme_macroplan');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [consumedMacros, setConsumedMacros] = useState(() => {
-    const saved = localStorage.getItem('mealme_consumed_macros');
-    return saved ? JSON.parse(saved) : { calories: 0, protein: 0, carbs: 0, fats: 0 };
-  });
-  const [mealResponses, setMealResponses] = useState(() => {
-    const saved = localStorage.getItem('mealme_meal_responses');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [isOnboarded, setIsOnboarded] = useState(false);
+  const [userMacroPlan, setUserMacroPlan] = useState(null);
+  const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [mealResponses, setMealResponses] = useState([]);
+
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async (userId) => {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (data) {
+        if (data.macro_plan && Object.keys(data.macro_plan).length > 0) {
+          setUserMacroPlan(data.macro_plan);
+          setIsOnboarded(true);
+        }
+        if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
+          setConsumedMacros(data.consumed_macros);
+        }
+        if (data.meal_responses && data.meal_responses.length > 0) {
+          setMealResponses(data.meal_responses);
+        }
+        if (data.last_active_date) {
+          localStorage.setItem('mealme_current_date', data.last_active_date);
+        }
+        if (data.weekly_history) {
+          localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
+        }
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [agentState, setAgentState] = useState('idle'); // idle, listening, processing, speaking
   const [showRecommendations, setShowRecommendations] = useState(false);
@@ -39,13 +70,20 @@ function App() {
   // Ref for speech synthesis to allow cancellation
   const synthRef = useRef(window.speechSynthesis);
 
-  // Sync state to local storage whenever it changes
+  // Sync state to Supabase whenever it changes
   useEffect(() => {
-    localStorage.setItem('mealme_onboarded', isOnboarded);
-    if (userMacroPlan) localStorage.setItem('mealme_macroplan', JSON.stringify(userMacroPlan));
-    localStorage.setItem('mealme_consumed_macros', JSON.stringify(consumedMacros));
-    localStorage.setItem('mealme_meal_responses', JSON.stringify(mealResponses));
-  }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses]);
+    if (!session) return;
+    const syncToCloud = async () => {
+      await supabase.from('profiles').update({
+        macro_plan: userMacroPlan || {},
+        consumed_macros: consumedMacros,
+        meal_responses: mealResponses,
+        last_active_date: localStorage.getItem('mealme_current_date') || new Date().toLocaleDateString(),
+        weekly_history: JSON.parse(localStorage.getItem('mealme_weekly_history') || '[]')
+      }).eq('id', session.user.id);
+    };
+    syncToCloud();
+  }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses, session]);
 
   // Midnight Rollover Script
   useEffect(() => {
@@ -294,11 +332,26 @@ function App() {
     }]);
   };
 
+  if (!session) {
+    return <Auth onSession={setSession} />;
+  }
+
+  if (!isOnboarded) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
   return (
     <div className="app-container">
       <header className="header">
         <div className="app-logo text-gradient">MealMe</div>
-        <div className="profile-pic">A</div>
+        <div className="header-actions" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>
+            Sign Out
+          </button>
+          <div className="profile-pic">A</div>
+        </div>
       </header>
 
       <main className="main-content">
