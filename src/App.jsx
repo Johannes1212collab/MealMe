@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera } from 'lucide-react';
+import { Camera, Download, X } from 'lucide-react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import VoiceAgent from './components/VoiceAgent';
@@ -24,8 +24,28 @@ function App() {
   });
   const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const [session, setSession] = useState(null);
+
+  // PWA install prompt
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) return;
+    const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBanner(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setShowInstallBanner(false));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
 
   useEffect(() => {
     const fetchProfile = async (userId) => {
@@ -404,6 +424,37 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 16px', background: 'linear-gradient(90deg, rgba(231,156,74,0.15), rgba(193,108,240,0.1))',
+          borderBottom: '1px solid rgba(231,156,74,0.25)', gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Download size={15} color="var(--primary-light)" />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)' }}>
+              Get the full app experience — install MealMe on your device.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              onClick={handleInstallApp}
+              style={{ padding: '5px 14px', borderRadius: '20px', border: 'none', background: 'var(--primary-light)', color: '#0e0c13', fontSize: '0.78rem', fontWeight: '700', fontFamily: 'var(--font-primary)', cursor: 'pointer' }}
+            >
+              Install App
+            </button>
+            <button
+              onClick={() => setShowInstallBanner(false)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+              aria-label="Dismiss"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="header">
         <div className="app-logo text-gradient">MealMe</div>
         <div className="header-actions" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
