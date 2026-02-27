@@ -11,6 +11,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 export default function Onboarding({ onComplete }) {
     const [step, setStep] = useState(1);
     const [data, setData] = useState({
+        name: '',
         age: '',
         gender: '',
         weight: '',
@@ -84,7 +85,7 @@ export default function Onboarding({ onComplete }) {
         if (importMode) {
             const result = parseCoachPlan(rawPlanText);
             if (result.isValid) {
-                onComplete(result.plan);
+                onComplete({ ...result.plan, name: data.name });
             } else {
                 setParsedImportError(true);
             }
@@ -95,7 +96,7 @@ export default function Onboarding({ onComplete }) {
             setStep(step + 1);
         } else {
             const plan = calculateMacros();
-            onComplete(plan);
+            onComplete({ ...plan, name: data.name });
         }
     };
 
@@ -213,6 +214,11 @@ export default function Onboarding({ onComplete }) {
                         {step === 1 && (
                             <div className="step-card animate-slide-up">
                                 <h3><User size={20} className="inline-icon" /> Basics</h3>
+
+                                <div className="input-group">
+                                    <label>First Name</label>
+                                    <input type="text" placeholder="e.g. John" value={data.name} onChange={e => updateData('name', e.target.value)} />
+                                </div>
 
                                 <div className="input-group">
                                     <label>Age</label>

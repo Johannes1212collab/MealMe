@@ -15,6 +15,7 @@ import { API_BASE_URL } from './utils/api';
 function App() {
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [userMacroPlan, setUserMacroPlan] = useState(null);
+  const [displayName, setDisplayName] = useState('');
   const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
 
@@ -27,6 +28,7 @@ function App() {
         if (data.macro_plan && Object.keys(data.macro_plan).length > 0) {
           setUserMacroPlan(data.macro_plan);
           setIsOnboarded(true);
+          if (data.macro_plan.name) setDisplayName(data.macro_plan.name);
         }
         if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
           setConsumedMacros(data.consumed_macros);
@@ -124,6 +126,7 @@ function App() {
 
   const handleOnboardingComplete = (planData) => {
     setUserMacroPlan(planData);
+    if (planData.name) setDisplayName(planData.name);
     setIsOnboarded(true);
   };
 
@@ -383,6 +386,7 @@ function App() {
           macroPlan={userMacroPlan}
           consumedMacros={consumedMacros}
           mealResponses={mealResponses}
+          userName={displayName || session?.user?.email?.split('@')[0] || 'there'}
           onPlanUpdate={handleUpdateProtein}
           onLogHistoricalMeal={handleLogHistoricalMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}

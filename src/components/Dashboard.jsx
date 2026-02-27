@@ -3,7 +3,7 @@ import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDay
 import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, onPlanUpdate, onLogHistoricalMeal, onCoachPlanUpdate }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, onPlanUpdate, onLogHistoricalMeal, onCoachPlanUpdate }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
     const [weeklyHistory, setWeeklyHistory] = useState([]);
@@ -170,13 +170,14 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, on
             )}
             <div className="greeting" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <h1 className="text-gradient">Good Evening, Alex</h1>
+                    <h1 className="text-gradient">Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {userName || 'there'}
+                    </h1>
                     <p className="subtitle">Daily Goal: {plan.tdee} kcal TDEE | Target: {plan.calories} kcal</p>
                 </div>
                 <button
                     onClick={openCoachEditor}
                     title="Edit Coach Plan"
-                    style={{ background: 'rgba(45,212,191,0.1)', border: '1px solid rgba(45,212,191,0.3)', borderRadius: '10px', padding: '8px 14px', color: 'var(--primary-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}>
+                    style={{ background: 'var(--primary-dim)', border: '1px solid rgba(231,156,74,0.3)', borderRadius: '10px', padding: '8px 14px', color: 'var(--primary-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}>
                     <ClipboardList size={16} /> Coach Plan
                 </button>
             </div>
