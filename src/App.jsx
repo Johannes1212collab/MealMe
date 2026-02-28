@@ -18,10 +18,7 @@ function App() {
   const [displayName, setDisplayName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
-  const [weeklyHistory, setWeeklyHistory] = useState(() => {
-    const stored = localStorage.getItem('mealme_weekly_history');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [weeklyHistory, setWeeklyHistory] = useState([]);
   const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -63,11 +60,13 @@ function App() {
         if (data.meal_responses && data.meal_responses.length > 0) {
           setMealResponses(data.meal_responses);
         }
+        // Restore weekly history directly into React state (survives iOS localStorage clears)
+        if (data.weekly_history && data.weekly_history.length > 0) {
+          setWeeklyHistory(data.weekly_history);
+          localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
+        }
         if (data.last_active_date) {
           localStorage.setItem('mealme_current_date', data.last_active_date);
-        }
-        if (data.weekly_history) {
-          localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
         }
       }
     };
@@ -111,12 +110,12 @@ function App() {
         macro_plan: userMacroPlan || {},
         consumed_macros: consumedMacros,
         meal_responses: mealResponses,
-        last_active_date: localStorage.getItem('mealme_current_date') || new Date().toLocaleDateString(),
-        weekly_history: JSON.parse(localStorage.getItem('mealme_weekly_history') || '[]')
+        last_active_date: new Date().toLocaleDateString(),
+        weekly_history: weeklyHistory
       }).eq('id', session.user.id);
     };
     syncToCloud();
-  }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses, session]);
+  }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses, weeklyHistory, session]);
 
   // Midnight Rollover Script
   useEffect(() => {
@@ -144,6 +143,8 @@ function App() {
       if (historyArray.length > 7) {
         historyArray = historyArray.slice(historyArray.length - 7);
       }
+      // Update both React state (primary) and localStorage (cache)
+      setWeeklyHistory(historyArray);
       localStorage.setItem('mealme_weekly_history', JSON.stringify(historyArray));
 
       // Reset the current day's trackers
