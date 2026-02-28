@@ -19,7 +19,7 @@ function App() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [weeklyHistory, setWeeklyHistory] = useState([]);
-  const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [consumedMacros, setConsumedMacros] = useState({ calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
   const [mealResponses, setMealResponses] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -319,6 +319,7 @@ function App() {
         calories: prev.calories + (data.cals || 0),
         protein: prev.protein + (data.protein || 0),
         carbs: prev.carbs + (data.carbs || 0),
+        fiber: (prev.fiber || 0) + (data.fiber || 0),
         fats: prev.fats + (data.fats || 0)
       }));
 
@@ -331,12 +332,14 @@ function App() {
           cals: data.cals || 0,
           protein: data.protein || 0,
           carbs: data.carbs || 0,
+          fiber: data.fiber || 0,
           fats: data.fats || 0
         },
         originalMacros: {
           cals: data.cals || 0,
           protein: data.protein || 0,
           carbs: data.carbs || 0,
+          fiber: data.fiber || 0,
           fats: data.fats || 0
         },
         portionMultiplier: 1
@@ -354,6 +357,7 @@ function App() {
           cals: Math.round((orig.cals || 0) * multiplier),
           protein: Math.round((orig.protein || 0) * multiplier),
           carbs: Math.round((orig.carbs || 0) * multiplier),
+          fiber: Math.round((orig.fiber || 0) * multiplier),
           fats: Math.round((orig.fats || 0) * multiplier),
         };
         return { ...meal, macros: newMacros, originalMacros: orig, portionMultiplier: multiplier, portionNote: note || '' };
@@ -363,8 +367,9 @@ function App() {
         calories: acc.calories + (m.macros?.cals || 0),
         protein: acc.protein + (m.macros?.protein || 0),
         carbs: acc.carbs + (m.macros?.carbs || 0),
+        fiber: (acc.fiber || 0) + (m.macros?.fiber || 0),
         fats: acc.fats + (m.macros?.fats || 0),
-      }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+      }), { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
       setConsumedMacros(totals);
       return updated;
     });
@@ -376,6 +381,7 @@ function App() {
       calories: prev.calories + (m.cals || 0),
       protein: prev.protein + (m.protein || 0),
       carbs: prev.carbs + (m.carbs || 0),
+      fiber: (prev.fiber || 0) + (m.fiber || 0),
       fats: prev.fats + (m.fats || 0)
     }));
     setMealResponses(prev => [...prev, {
@@ -383,8 +389,8 @@ function App() {
       time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
       desc: meal.desc + ' (re-added)',
       status: 'completed',
-      macros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 },
-      originalMacros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 },
+      macros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fiber: m.fiber || 0, fats: m.fats || 0 },
+      originalMacros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fiber: m.fiber || 0, fats: m.fats || 0 },
       portionMultiplier: 1
     }]);
   };
@@ -395,6 +401,7 @@ function App() {
       calories: prev.calories + (selectedOption.cals || 0),
       protein: prev.protein + (selectedOption.protein || 0),
       carbs: prev.carbs + (selectedOption.carbs || 0),
+      fiber: (prev.fiber || 0) + (selectedOption.fiber || 0),
       fats: prev.fats + (selectedOption.fats || 0)
     }));
 
@@ -408,12 +415,14 @@ function App() {
         cals: selectedOption.cals || 0,
         protein: selectedOption.protein || 0,
         carbs: selectedOption.carbs || 0,
+        fiber: selectedOption.fiber || 0,
         fats: selectedOption.fats || 0
       },
       originalMacros: {
         cals: selectedOption.cals || 0,
         protein: selectedOption.protein || 0,
         carbs: selectedOption.carbs || 0,
+        fiber: selectedOption.fiber || 0,
         fats: selectedOption.fats || 0
       },
       portionMultiplier: 1

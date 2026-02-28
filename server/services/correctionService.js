@@ -22,7 +22,7 @@ You previously analyzed a food photo and produced this nutritional result:
 Meal: "${previousResult.name}"
 Calories: ${previousResult.cals} kcal
 Protein: ${previousResult.protein}g
-Carbs: ${previousResult.carbs}g
+Total Carbs: ${previousResult.carbs}g (of which fiber: ${previousResult.fiber || 0}g)
 Fats: ${previousResult.fats}g
 Description: ${previousResult.description}
 
@@ -39,7 +39,8 @@ Return ONLY a valid JSON object (no markdown, no explanation):
     "name": "Updated meal name if appropriate, otherwise keep the same",
     "cals": Updated total calories as integer,
     "protein": Updated total protein in grams as integer,
-    "carbs": Updated total net carbs in grams as integer,
+    "carbs": Updated total carbs in grams as integer (includes fiber),
+    "fiber": Updated dietary fiber in grams as integer,
     "fats": Updated total fats in grams as integer,
     "description": "Updated 1-sentence description reflecting the correction",
     "details": "Brief explanation of what changed and the recalculation performed"

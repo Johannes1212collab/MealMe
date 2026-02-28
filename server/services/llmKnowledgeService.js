@@ -107,7 +107,8 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
                         "description": "Brief reason this was chosen.",
                         "cals": integer,
                         "protein": integer,
-                        "carbs": integer,
+                        "carbs": integer (total carbs including fiber),
+                        "fiber": integer,
                         "fats": integer,
                         "isPerfectMatch": boolean
                     }
@@ -122,7 +123,7 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
                     {
                         "time": "time string from history",
                         "desc": "meal description",
-                        "macros": { "cals": integer, "protein": integer, "carbs": integer, "fats": integer }
+                        "macros": { "cals": integer, "protein": integer, "carbs": integer, "fiber": integer, "fats": integer }
                     }
                 ]
             }

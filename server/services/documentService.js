@@ -38,7 +38,8 @@ Using ONLY the values you listed in Step 1, fill in this schema.
 CRITICAL RULES for mapping:
 - "cals": use the value labeled "Calories", "Total Calories", "Energy", or "kcal".
 - "protein": use the value labeled "Protein".
-- "carbs": use the value labeled "Carbohydrates", "Total Carbs", or "Net Carbs". Do NOT include fiber.
+- "carbs": use the value labeled "Carbohydrates", "Total Carbs", or "Net Carbs". This should be TOTAL carbs including fiber.
+- "fiber": use the value labeled "Dietary Fiber", "Fibre", or "Fiber". If absent, use 0.
 - "fats": use the value labeled "Total Fat" or "Fat". Do NOT use "Saturated Fat", "Trans Fat", "Unsaturated Fat" — these are SUBTYPES, not the total.
 - "tdee": use the value labeled "TDEE", "Maintenance", "Total Daily Energy Expenditure", or 0 if absent.
 - DO NOT ESTIMATE. If you cannot find a value in Step 1, use 0.
@@ -49,7 +50,8 @@ Return ONLY this JSON (no markdown fences, no Step 1 text in the output):
     "name": "Short title of the plan/document",
     "cals": integer,
     "protein": integer,
-    "carbs": integer,
+    "carbs": integer (total carbs including fiber),
+    "fiber": integer,
     "fats": integer,
     "tdee": integer,
     "description": "One sentence summary of the document",

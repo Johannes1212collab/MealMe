@@ -409,7 +409,14 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                         <div className="plan-item-macros animate-slide-up">
                                             <span>🔥 {meal.macros.cals}kcal</span>
                                             <span>🥩 {meal.macros.protein}g Prot</span>
-                                            <span>🍞 {meal.macros.carbs}g Carb</span>
+                                            <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                                <span>🍞 {meal.macros.carbs}g Carb</span>
+                                                {meal.macros.fiber > 0 && (
+                                                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-success)', paddingLeft: '2px' }}>
+                                                        ↳ {meal.macros.fiber}g fiber · {Math.max(0, meal.macros.carbs - meal.macros.fiber)}g net
+                                                    </span>
+                                                )}
+                                            </span>
                                             <span>🥑 {meal.macros.fats}g Fat</span>
                                             {/* Portion editor */}
                                             {onEditMealPortion && meal.id && (

@@ -32,9 +32,10 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             Return ONLY a valid JSON object matching this exact schema:
             {
                 "name": "Name of the meal",
-                "cals": Estimated calories (integer),
+                "cals": Estimated calories (integer, based on full macros including fiber at 2 kcal/g),
                 "protein": Estimated protein in grams (integer),
-                "carbs": Estimated NET CARBS in grams (integer),
+                "carbs": Estimated TOTAL carbs in grams (integer, includes fiber),
+                "fiber": Estimated dietary fiber in grams (integer, must be <= carbs),
                 "fats": Estimated fats in grams (integer),
                 "description": "A 1-sentence quick summary of the meal for voice TTS",
                 "details": "A bulleted list containing any interesting nutritional facts or tips about this meal."
@@ -57,7 +58,8 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
                 "name": "Creative Recipe Name Idea",
                 "cals": Estimated calories of ONE PORTION (integer),
                 "protein": Estimated protein of ONE PORTION in grams (integer),
-                "carbs": Estimated NET CARBS of ONE PORTION in grams (integer),
+                "carbs": Estimated TOTAL carbs of ONE PORTION in grams (integer, includes fiber),
+                "fiber": Estimated dietary fiber of ONE PORTION in grams (integer, must be <= carbs),
                 "fats": Estimated fats of ONE PORTION in grams (integer),
                 "description": "A 1-sentence quick summary of the recipe for voice TTS",
                 "details": "A bulleted list formatted string containing:\\n- The step-by-step recipe instructions to cook the ENTIRE batch.\\n- Clear instructions on exactly what fraction of the final dish the user should eat right now as ONE PORTION (approx ${mealMax} kcal max). You MUST bold this serving size fraction using markdown (e.g., **serve exactly 1/4 of the dish**).\\n- Advice to store the remaining fractions as leftovers in containers."
