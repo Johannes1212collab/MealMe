@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
  * Takes a base64 image (from the CameraScanner component) and asks Gemini 1.5 Pro
  * to estimate the caloric and macronutrient breakdown of the food pictured.
  */
-export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_KEY) => {
+export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_KEY, recipeIntent) => {
     try {
         if (!API_KEY || API_KEY === 'your_gemini_api_key_here') {
             throw new Error("Missing valid GEMINI_API_KEY in server/.env");
@@ -66,7 +66,41 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             }
         `;
 
-        const prompt = mode === 'ingredients' ? ingredientsPrompt : mealPrompt;
+        // Recipe-specific prompt when user tells us what they're making
+        const recipePlanPrompt = recipeIntent ? `
+            You are an expert nutritionist and chef. The user has photographed their raw ingredients and plans to make: "${recipeIntent}".
+
+            1. Identify every ingredient visible in the photo and estimate its quantity (grams or ml)
+            2. Calculate the TOTAL macro profile for a full batch of "${recipeIntent}" using those ingredients
+            3. Choose a serving fraction (1/2, 1/3, 1/4 etc.) so ONE serving stays under ${mealMax} kcal
+            4. Return macros for ONE SINGLE SERVING only
+
+            Factor in the typical cooking method (oil absorbed when frying, water lost when boiling/baking).
+            Minor staples not visible (salt, cooking spray) are fine to assume. Do NOT invent major missing ingredients.
+            Use METRIC units exclusively.
+
+            Return ONLY valid JSON:
+            {
+                "name": "${recipeIntent}",
+                "cals": calories of ONE serving (integer),
+                "protein": protein of ONE serving in grams (integer),
+                "carbs": total carbs of ONE serving in grams (integer, includes fiber),
+                "fiber": dietary fiber of ONE serving in grams (integer),
+                "fats": fats of ONE serving in grams (integer),
+                "description": "A 1-sentence TTS-friendly summary of dish and portion",
+                "details": "Bulleted: identified ingredients and amounts, total batch macros, **serving instruction** (e.g. eat exactly 1/3 of the dish ≈ 350g), key prep notes"
+            }
+        ` : null;
+
+        // Pick the right prompt
+        let prompt;
+        if (mode === 'ingredients' && recipeIntent) {
+            prompt = recipePlanPrompt;
+        } else if (mode === 'ingredients') {
+            prompt = ingredientsPrompt;
+        } else {
+            prompt = mealPrompt;
+        }
 
         const response = await ai.models.generateContent({
             model: 'gemini-3.1-pro-preview',

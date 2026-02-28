@@ -31,8 +31,8 @@ import { correctFoodAnalysis } from './services/correctionService.js';
 // Route 1: Camera Vision
 app.post('/api/vision', async (req, res) => {
     try {
-        const { imageBase64, mode, remainingMacros } = req.body;
-        const result = await analyzeFoodImage(imageBase64, mode, remainingMacros, process.env.GEMINI_API_KEY);
+        const { imageBase64, mode, remainingMacros, recipeIntent } = req.body;
+        const result = await analyzeFoodImage(imageBase64, mode, remainingMacros, process.env.GEMINI_API_KEY, recipeIntent);
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
