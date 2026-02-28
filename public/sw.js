@@ -17,15 +17,24 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// Activate: delete ALL old caches so users get fresh code
+// Activate: delete ALL old caches so users get fresh code, then force
+// all open clients to reload so they immediately run the new SW code.
+// client.navigate() works from within the SW — no page cooperation needed.
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-        )
+        caches.keys()
+            .then((keys) =>
+                Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+            )
+            .then(() => self.clients.claim())
+            .then(() =>
+                // Navigate every open window/tab to itself — new SW intercepts
+                // the navigation with network-first, so they get fresh HTML + JS
+                self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) =>
+                    Promise.all(clients.map((client) => client.navigate(client.url)))
+                )
+            )
     );
-    // Take control of all open tabs immediately
-    self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
