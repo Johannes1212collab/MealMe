@@ -70,12 +70,13 @@ function App() {
 
         if (data) {
           const hasMacroPlan = data.macro_plan && Object.keys(data.macro_plan).length > 0 && data.macro_plan.calories > 0;
+          const hasOnboardedMarker = data.macro_plan?._onboarded === true;
           const hasAnyUsageData = (data.meal_responses && data.meal_responses.length > 0) ||
             (data.weekly_history && data.weekly_history.length > 0) ||
             (data.consumed_macros && data.consumed_macros.calories > 0);
 
-          // User is onboarded if: they have a real macro plan, OR any usage data, OR a local flag
-          if (hasMacroPlan || hasAnyUsageData || localFlag === '1') {
+          // User is onboarded if: real macro plan, _onboarded marker in DB, any usage data, OR localStorage flag
+          if (hasMacroPlan || hasOnboardedMarker || hasAnyUsageData || localFlag === '1') {
             setIsOnboarded(true);
             // Write/refresh the flag so future loads are covered
             localStorage.setItem(`mealme_onboarded_${userId}`, '1');
@@ -210,13 +211,26 @@ function App() {
   }, [userMacroPlan]); // Runs once when userMacroPlan becomes available
 
   const handleOnboardingComplete = (planData) => {
-    setUserMacroPlan(planData);
+    // Embed the _onboarded marker directly into the plan so Supabase always
+    // has a reliable signal, even if macro values are wiped by a future sync bug
+    const markedPlan = { ...planData, _onboarded: true };
+    setUserMacroPlan(markedPlan);
     if (planData.name) setDisplayName(planData.name);
     setIsOnboarded(true);
-    // Write a per-user onboarding flag immediately — this acts as a resilient
-    // fallback so refresh doesn't re-trigger onboarding even if Supabase is slow
+
+    // Write the flag to localStorage immediately (per-user key)
     if (session?.user?.id) {
       localStorage.setItem(`mealme_onboarded_${session.user.id}`, '1');
+    }
+
+    // Write directly to Supabase NOW — don't wait for the syncToCloud effect
+    // This ensures the _onboarded signal is in the DB within milliseconds
+    if (session?.user?.id) {
+      supabase.from('profiles').update({
+        macro_plan: markedPlan
+      }).eq('id', session.user.id).then(({ error }) => {
+        if (error) console.error('Failed to save onboarded marker:', error);
+      });
     }
   };
 

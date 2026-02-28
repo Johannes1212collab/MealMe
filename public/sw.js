@@ -13,27 +13,15 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
     );
-    // Activate the new SW immediately without waiting for old clients to close
     self.skipWaiting();
 });
 
-// Activate: delete ALL old caches so users get fresh code, then force
-// all open clients to reload so they immediately run the new SW code.
-// client.navigate() works from within the SW — no page cooperation needed.
+// Activate: delete ALL old caches, claim clients
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys()
-            .then((keys) =>
-                Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-            )
-            .then(() => self.clients.claim())
-            .then(() =>
-                // Navigate every open window/tab to itself — new SW intercepts
-                // the navigation with network-first, so they get fresh HTML + JS
-                self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) =>
-                    Promise.all(clients.map((client) => client.navigate(client.url)))
-                )
-            )
+        caches.keys().then((keys) =>
+            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+        ).then(() => self.clients.claim())
     );
 });
 
@@ -49,8 +37,6 @@ self.addEventListener('fetch', (event) => {
 
     // ── 2. HTML navigation (index.html) → NETWORK-FIRST ──────────────────────
     // index.html has no content hash so it can change on every deploy.
-    // Cache-first here means users would run old JS forever. Always go to
-    // network and only fall back to cache if offline.
     if (request.mode === 'navigate') {
         event.respondWith(
             fetch(request)
@@ -67,9 +53,6 @@ self.addEventListener('fetch', (event) => {
     }
 
     // ── 3. Vite-hashed assets (/assets/*.js, /assets/*.css) → CACHE-FIRST ────
-    // These filenames include a content hash (e.g. index-BguQGCjd.js).
-    // When content changes Vite produces a new filename, so these are safe to
-    // cache indefinitely. Cache-first gives instant loads after first visit.
     if (url.pathname.startsWith('/assets/')) {
         event.respondWith(
             caches.match(request).then((cached) => {
@@ -86,7 +69,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // ── 4. Everything else (icons, manifest) → NETWORK-FIRST with cache fallback
+    // ── 4. Everything else → NETWORK-FIRST with cache fallback
     event.respondWith(
         fetch(request)
             .then((response) => {
