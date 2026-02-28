@@ -266,7 +266,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                 </button>
             </div>
 
-            <div className="viewfinder-container">
+            <div className="viewfinder-container" onClick={() => !isScanning && cameraInputRef.current?.click()} style={{ cursor: isScanning ? 'default' : 'pointer' }}>
                 <div className={`viewfinder-frame ${isScanning ? 'scanning' : ''}`}>
                     {selectedImage && (
                         <img
