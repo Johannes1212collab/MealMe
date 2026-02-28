@@ -47,47 +47,62 @@ function App() {
 
   useEffect(() => {
     const fetchProfile = async (userId) => {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (data) {
-        if (data.macro_plan && Object.keys(data.macro_plan).length > 0) {
-          setUserMacroPlan(data.macro_plan);
-          setIsOnboarded(true);
-          if (data.macro_plan.name) setDisplayName(data.macro_plan.name);
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+        if (data) {
+          if (data.macro_plan && Object.keys(data.macro_plan).length > 0) {
+            setUserMacroPlan(data.macro_plan);
+            setIsOnboarded(true);
+            if (data.macro_plan.name) setDisplayName(data.macro_plan.name);
+          }
+          if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
+            setConsumedMacros(data.consumed_macros);
+          }
+          if (data.meal_responses && data.meal_responses.length > 0) {
+            setMealResponses(data.meal_responses);
+          }
+          if (data.weekly_history && data.weekly_history.length > 0) {
+            setWeeklyHistory(data.weekly_history);
+            localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
+          }
+          if (data.last_active_date) {
+            localStorage.setItem('mealme_current_date', data.last_active_date);
+          }
         }
-        if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
-          setConsumedMacros(data.consumed_macros);
-        }
-        if (data.meal_responses && data.meal_responses.length > 0) {
-          setMealResponses(data.meal_responses);
-        }
-        // Restore weekly history directly into React state (survives iOS localStorage clears)
-        if (data.weekly_history && data.weekly_history.length > 0) {
-          setWeeklyHistory(data.weekly_history);
-          localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
-        }
-        if (data.last_active_date) {
-          localStorage.setItem('mealme_current_date', data.last_active_date);
-        }
+      } catch (err) {
+        console.error('fetchProfile error:', err);
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Safety net: never hang on the splash screen longer than 6 seconds
+    const loadingTimeout = setTimeout(() => setIsProfileLoading(false), 6000);
+
+    // Use onAuthStateChange as the SINGLE source of truth.
+    // INITIAL_SESSION fires exactly once at startup with the real auth state —
+    // unlike getSession() which races against our async IndexedDB storage reads
+    // and returns null before the stored token can be retrieved.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
-      if (session) {
-        fetchProfile(session.user.id).finally(() => setIsProfileLoading(false));
-      } else {
+
+      if (event === 'INITIAL_SESSION') {
+        // Authoritative startup state — only fires once
+        if (session) {
+          await fetchProfile(session.user.id);
+        }
+        clearTimeout(loadingTimeout);
         setIsProfileLoading(false);
+      } else if (session) {
+        // SIGNED_IN / TOKEN_REFRESHED / etc — refresh profile silently
+        fetchProfile(session.user.id);
       }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const [agentState, setAgentState] = useState('idle'); // idle, listening, processing, speaking
