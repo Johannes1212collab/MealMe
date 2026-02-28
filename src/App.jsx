@@ -64,10 +64,25 @@ function App() {
     const fetchProfile = async (userId) => {
       try {
         const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+
+        // Check localStorage onboarding flag (per-user, keyed by userId)
+        const localFlag = localStorage.getItem(`mealme_onboarded_${userId}`);
+
         if (data) {
-          if (data.macro_plan && Object.keys(data.macro_plan).length > 0) {
-            setUserMacroPlan(data.macro_plan);
+          const hasMacroPlan = data.macro_plan && Object.keys(data.macro_plan).length > 0 && data.macro_plan.calories > 0;
+          const hasAnyUsageData = (data.meal_responses && data.meal_responses.length > 0) ||
+            (data.weekly_history && data.weekly_history.length > 0) ||
+            (data.consumed_macros && data.consumed_macros.calories > 0);
+
+          // User is onboarded if: they have a real macro plan, OR any usage data, OR a local flag
+          if (hasMacroPlan || hasAnyUsageData || localFlag === '1') {
             setIsOnboarded(true);
+            // Write/refresh the flag so future loads are covered
+            localStorage.setItem(`mealme_onboarded_${userId}`, '1');
+          }
+
+          if (hasMacroPlan) {
+            setUserMacroPlan(data.macro_plan);
             if (data.macro_plan.name) setDisplayName(data.macro_plan.name);
           }
           if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
@@ -83,9 +98,15 @@ function App() {
           if (data.last_active_date) {
             localStorage.setItem('mealme_current_date', data.last_active_date);
           }
+        } else if (localFlag === '1') {
+          // Profile row missing but local flag says they onboarded — let them through
+          setIsOnboarded(true);
         }
       } catch (err) {
         console.error('fetchProfile error:', err);
+        // If Supabase fails entirely, fall back to local flag
+        const localFlag = localStorage.getItem(`mealme_onboarded_${userId}`);
+        if (localFlag === '1') setIsOnboarded(true);
       }
     };
 
@@ -192,6 +213,11 @@ function App() {
     setUserMacroPlan(planData);
     if (planData.name) setDisplayName(planData.name);
     setIsOnboarded(true);
+    // Write a per-user onboarding flag immediately — this acts as a resilient
+    // fallback so refresh doesn't re-trigger onboarding even if Supabase is slow
+    if (session?.user?.id) {
+      localStorage.setItem(`mealme_onboarded_${session.user.id}`, '1');
+    }
   };
 
   const handleUpdateProtein = (newProtein) => {
