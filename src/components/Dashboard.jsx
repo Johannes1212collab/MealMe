@@ -3,7 +3,7 @@ import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDay
 import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
 
@@ -411,6 +411,27 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                             <span>🥩 {meal.macros.protein}g Prot</span>
                                             <span>🍞 {meal.macros.carbs}g Carb</span>
                                             <span>🥑 {meal.macros.fats}g Fat</span>
+                                            {/* Portion editor */}
+                                            {onEditMealPortion && meal.id && (
+                                                <div className="portion-editor">
+                                                    <span className="portion-label">
+                                                        {meal.portionMultiplier && meal.portionMultiplier < 1
+                                                            ? `Adjusted to ${Math.round(meal.portionMultiplier * 100)}%${meal.portionNote ? ` · ${meal.portionNote}` : ''}`
+                                                            : 'How much did you eat?'}
+                                                    </span>
+                                                    <div className="portion-presets">
+                                                        {[['¼', 0.25, 'a quarter'], ['½', 0.5, 'half'], ['¾', 0.75, 'three quarters'], ['All', 1.0, '']].map(([label, val, note]) => (
+                                                            <button
+                                                                key={label}
+                                                                className={`portion-btn${Math.abs((meal.portionMultiplier || 1) - val) < 0.01 ? ' active' : ''}`}
+                                                                onClick={(e) => { e.stopPropagation(); onEditMealPortion(meal.id, val, note); }}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </li>

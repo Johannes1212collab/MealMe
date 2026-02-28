@@ -223,13 +223,43 @@ function App() {
       return;
     }
 
-    setSuggestionData(backendData.data);
+    const d = backendData.data;
+
+    // ── Portion Adjustment ──────────────────────────────────────
+    if (d.type === 'portion') {
+      const ref = (d.mealReference || '').toLowerCase();
+      // Find most recent meal that matches the reference
+      const matchedMeal = [...mealResponses].reverse().find(m =>
+        m.desc && (m.desc.toLowerCase().includes(ref) || ref.includes(m.desc.toLowerCase().split(' ')[0]))
+      ) || mealResponses[mealResponses.length - 1]; // fall back to most recent
+
+      if (matchedMeal?.id) {
+        handleEditMealPortion(matchedMeal.id, d.portionMultiplier ?? 0.5, d.portionNote || '');
+      }
+
+      if ('speechSynthesis' in window) {
+        synthRef.current.cancel();
+        const utterance = new SpeechSynthesisUtterance(d.message);
+        utterance.rate = 1.0; utterance.pitch = 1.1;
+        const voices = synthRef.current.getVoices();
+        const femaleVoice = voices.find(v => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Google UK English Female'));
+        if (femaleVoice) utterance.voice = femaleVoice;
+        utterance.onend = () => setAgentState('idle');
+        synthRef.current.speak(utterance);
+      } else {
+        setTimeout(() => setAgentState('idle'), 3000);
+      }
+      setShowRecommendations(false);
+      return;
+    }
+
+    setSuggestionData(d);
     setShowRecommendations(true);
     setAgentState('speaking');
 
     if ('speechSynthesis' in window) {
       synthRef.current.cancel();
-      const utterance = new SpeechSynthesisUtterance(backendData.data.message);
+      const utterance = new SpeechSynthesisUtterance(d.message);
       utterance.rate = 1.0;
       utterance.pitch = 1.1;
 
@@ -293,6 +323,7 @@ function App() {
       }));
 
       setMealResponses(prev => [...prev, {
+        id: Date.now(),
         time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
         desc: data.name || data.title,
         status: 'completed',
@@ -301,9 +332,42 @@ function App() {
           protein: data.protein || 0,
           carbs: data.carbs || 0,
           fats: data.fats || 0
-        }
+        },
+        originalMacros: {
+          cals: data.cals || 0,
+          protein: data.protein || 0,
+          carbs: data.carbs || 0,
+          fats: data.fats || 0
+        },
+        portionMultiplier: 1
       }]);
     }
+  };
+
+  // Edit the portion of a logged meal (e.g., ate half, shared)
+  const handleEditMealPortion = (mealId, multiplier, note) => {
+    setMealResponses(prev => {
+      const updated = prev.map(meal => {
+        if (meal.id !== mealId) return meal;
+        const orig = meal.originalMacros || meal.macros;
+        const newMacros = {
+          cals: Math.round((orig.cals || 0) * multiplier),
+          protein: Math.round((orig.protein || 0) * multiplier),
+          carbs: Math.round((orig.carbs || 0) * multiplier),
+          fats: Math.round((orig.fats || 0) * multiplier),
+        };
+        return { ...meal, macros: newMacros, originalMacros: orig, portionMultiplier: multiplier, portionNote: note || '' };
+      });
+      // Recalculate consumed totals from scratch
+      const totals = updated.reduce((acc, m) => ({
+        calories: acc.calories + (m.macros?.cals || 0),
+        protein: acc.protein + (m.macros?.protein || 0),
+        carbs: acc.carbs + (m.macros?.carbs || 0),
+        fats: acc.fats + (m.macros?.fats || 0),
+      }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+      setConsumedMacros(totals);
+      return updated;
+    });
   };
 
   const handleReaddMeal = (meal) => {
@@ -315,10 +379,13 @@ function App() {
       fats: prev.fats + (m.fats || 0)
     }));
     setMealResponses(prev => [...prev, {
+      id: Date.now(),
       time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
       desc: meal.desc + ' (re-added)',
       status: 'completed',
-      macros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 }
+      macros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 },
+      originalMacros: { cals: m.cals || 0, protein: m.protein || 0, carbs: m.carbs || 0, fats: m.fats || 0 },
+      portionMultiplier: 1
     }]);
   };
 
@@ -333,6 +400,7 @@ function App() {
 
     // Push the chosen option to the visual log
     setMealResponses(prev => [...prev, {
+      id: Date.now(),
       time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
       desc: selectedOption.title,
       status: 'completed',
@@ -341,7 +409,14 @@ function App() {
         protein: selectedOption.protein || 0,
         carbs: selectedOption.carbs || 0,
         fats: selectedOption.fats || 0
-      }
+      },
+      originalMacros: {
+        cals: selectedOption.cals || 0,
+        protein: selectedOption.protein || 0,
+        carbs: selectedOption.carbs || 0,
+        fats: selectedOption.fats || 0
+      },
+      portionMultiplier: 1
     }]);
 
     setShowRecommendations(false);
@@ -536,6 +611,7 @@ function App() {
           onPlanUpdate={handleUpdateProtein}
           onReaddMeal={handleReaddMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
+          onEditMealPortion={handleEditMealPortion}
         />  </main>
 
       <div className="action-bar">
@@ -555,6 +631,7 @@ function App() {
         suggestionData={suggestionData}
         onSelectOption={handleSelectRecommendation}
         onReaddMeal={handleReaddMeal}
+        onEditMealPortion={handleEditMealPortion}
       />
 
       <CameraScanner

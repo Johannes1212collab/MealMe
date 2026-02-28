@@ -470,3 +470,56 @@
 .plan-item-macros span {
     font-weight: 500;
 }
+
+/* ── Portion Editor ──────────────────────────────────────── */
+.portion-editor {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.portion-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.portion-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.portion-btn {
+    flex: 1;
+    min-width: 44px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: center;
+}
+
+.portion-btn:hover {
+    background: rgba(231, 156, 74, 0.1);
+    border-color: rgba(231, 156, 74, 0.35);
+    color: var(--primary-light);
+}
+
+.portion-btn.active {
+    background: rgba(231, 156, 74, 0.15);
+    border-color: rgba(231, 156, 74, 0.5);
+    color: var(--primary-light);
+    box-shadow: 0 0 8px rgba(231, 156, 74, 0.2);
+}

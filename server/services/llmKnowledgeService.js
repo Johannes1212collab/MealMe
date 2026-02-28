@@ -65,6 +65,23 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             • "What did I smash at lunch on Tuesday?"
             → Search weeklyHistory for the relevant entries. Return type "info" with a conversational spoken answer and the found meals in foundMeals.
 
+            ── INTENT D: Portion Adjustment ──
+            The user is telling you that they ate LESS than a meal they already logged. They shared it, didn't finish it, only had part of it, or ate a specific fraction. This does NOT involve logging a new meal — it's correcting an existing one.
+            Examples of wildly different phrasings that all mean INTENT D:
+            • "I only ate half of it"
+            • "We shared the pizza"
+            • "Didn't finish my burger"
+            • "Split dinner with my partner"
+            • "Had about 3/4 of my pasta"
+            • "Only ate a quarter of it"
+            • "Shared the steak with my girlfriend"
+            • "Left some on the plate"
+            • "Had a few bites of the dessert"
+            → Identify the fraction/multiplier from context. Return type "portion".
+            Fraction → multiplier mapping: "half" = 0.5, "quarter" = 0.25, "third" = 0.33, "three quarters" = 0.75, "two thirds" = 0.67.
+            If vague (e.g., "didn't finish", "left some"), use 0.5 as a default.
+            Include the meal being adjusted in mealReference (use the food word from their message).
+
             ── NUTRITIONAL ACCURACY RULES ──
             These rules apply to ALL intents when producing macro numbers:
 
@@ -108,6 +125,15 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
                         "macros": { "cals": integer, "protein": integer, "carbs": integer, "fats": integer }
                     }
                 ]
+            }
+
+            For INTENT D:
+            {
+                "type": "portion",
+                "message": "Natural 1-2 sentence spoken confirmation, e.g. 'Got it, I've adjusted your burger to half a serving.'",
+                "mealReference": "the food item mentioned, e.g. 'burger', 'pasta', 'pizza'",
+                "portionMultiplier": number between 0 and 1,
+                "portionNote": "brief human description e.g. 'shared with partner', 'half eaten'"
             }
         `;
 
