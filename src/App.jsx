@@ -23,6 +23,7 @@ function App() {
   const [mealResponses, setMealResponses] = useState([]);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [iosInstallType, setIosInstallType] = useState(null); // 'safari' | 'other-browser' | null
 
   const [session, setSession] = useState(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -31,6 +32,20 @@ function App() {
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if (isStandalone) return;
+
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+
+    if (isIOS) {
+      // iOS Safari: can add to home screen via Share sheet
+      // iOS Firefox/Chrome: must open in Safari first
+      setIosInstallType(isIOSSafari ? 'safari' : 'other-browser');
+      setShowInstallBanner(true);
+      return;
+    }
+
+    // Android / Desktop: use native beforeinstallprompt
     const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBanner(true); };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setShowInstallBanner(false));
@@ -118,8 +133,10 @@ function App() {
   const synthRef = useRef(window.speechSynthesis);
 
   // Sync state to Supabase whenever it changes
+  // IMPORTANT: guard with isOnboarded — without this, the effect fires when session is first
+  // set (before fetchProfile completes) and saves macro_plan:{} which overwrites the real plan.
   useEffect(() => {
-    if (!session) return;
+    if (!session || !isOnboarded) return;
     const syncToCloud = async () => {
       await supabase.from('profiles').update({
         macro_plan: userMacroPlan || {},
@@ -550,19 +567,25 @@ function App() {
           padding: '9px 16px', background: 'linear-gradient(90deg, rgba(231,156,74,0.15), rgba(193,108,240,0.1))',
           borderBottom: '1px solid rgba(231,156,74,0.25)', gap: '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Download size={15} color="var(--primary-light)" />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)' }}>
-              Get the full app experience — install MealMe on your device.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+            <Download size={15} color="var(--primary-light)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontFamily: 'var(--font-primary)', lineHeight: 1.3 }}>
+              {iosInstallType === 'safari'
+                ? <>Tap <strong style={{ color: 'var(--primary-light)' }}>Share ↑</strong> then <strong style={{ color: 'var(--primary-light)' }}>Add to Home Screen</strong> to install MealMe</>
+                : iosInstallType === 'other-browser'
+                  ? <>Open MealMe in <strong style={{ color: 'var(--primary-light)' }}>Safari</strong> to install it on your home screen</>
+                  : 'Get the full app experience — install MealMe on your device.'}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <button
-              onClick={handleInstallApp}
-              style={{ padding: '5px 14px', borderRadius: '20px', border: 'none', background: 'var(--primary-light)', color: '#0e0c13', fontSize: '0.78rem', fontWeight: '700', fontFamily: 'var(--font-primary)', cursor: 'pointer' }}
-            >
-              Install App
-            </button>
+            {!iosInstallType && (
+              <button
+                onClick={handleInstallApp}
+                style={{ padding: '5px 14px', borderRadius: '20px', border: 'none', background: 'var(--primary-light)', color: '#0e0c13', fontSize: '0.78rem', fontWeight: '700', fontFamily: 'var(--font-primary)', cursor: 'pointer' }}
+              >
+                Install App
+              </button>
+            )}
             <button
               onClick={() => setShowInstallBanner(false)}
               style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
