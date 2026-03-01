@@ -235,6 +235,22 @@ function App() {
     return () => document.removeEventListener('visibilitychange', checkDateOnFocus);
   }, [userMacroPlan, consumedMacros, mealResponses]);
 
+  // Reset today's log — clears stale meals that carried over from a previous day
+  const handleResetToday = async () => {
+    const empty = { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 };
+    setMealResponses([]);
+    setConsumedMacros(empty);
+    localStorage.setItem('mealme_current_date', new Date().toLocaleDateString());
+    if (session?.user?.id) {
+      await supabase.from('profiles').update({
+        meal_responses: [],
+        consumed_macros: empty,
+        last_active_date: new Date().toLocaleDateString()
+      }).eq('id', session.user.id);
+    }
+  };
+
+
   const handleOnboardingComplete = (planData) => {
     // Embed the _onboarded marker directly into the plan so Supabase always
     // has a reliable signal, even if macro values are wiped by a future sync bug
@@ -724,6 +740,7 @@ function App() {
           onReaddMeal={handleReaddMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
           onEditMealPortion={handleEditMealPortion}
+          onResetToday={handleResetToday}
         />  </main>
 
       <div className="action-bar">

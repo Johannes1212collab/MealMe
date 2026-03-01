@@ -3,9 +3,10 @@ import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDay
 import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion, onResetToday }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false);
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
+    const [confirmReset, setConfirmReset] = useState(false);
 
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
@@ -366,7 +367,26 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
             <div className="todays-plan glass-panel">
                 <div className="plan-header">
                     <h3>Today's Log</h3>
-                    <span className="badge">Active</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {mealResponses && mealResponses.length > 0 && onResetToday && (
+                            confirmReset ? (
+                                <button
+                                    onClick={() => { onResetToday(); setConfirmReset(false); }}
+                                    style={{ fontSize: '0.72rem', padding: '4px 10px', borderRadius: '8px', border: 'none', background: 'rgba(229,90,106,0.2)', color: '#f08090', cursor: 'pointer', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}
+                                >
+                                    ⚠️ Confirm Reset
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setConfirmReset(true)}
+                                    style={{ fontSize: '0.72rem', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'var(--font-primary)', whiteSpace: 'nowrap' }}
+                                >
+                                    Reset
+                                </button>
+                            )
+                        )}
+                        <span className="badge">Active</span>
+                    </div>
                 </div>
                 <ul className="plan-list">
                     {(!mealResponses || mealResponses.length === 0) ? (
