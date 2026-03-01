@@ -152,16 +152,23 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                         </h3>
 
                         {/* File Upload Section */}
-                        <input ref={planFileInputRef} type="file" accept="image/*,application/pdf,text/plain,.pdf,.txt" style={{ display: 'none' }} onChange={handlePlanFileUpload} />
-                        <button
-                            onClick={() => planFileInputRef.current?.click()}
-                            disabled={isUploadingPlan}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '12px', border: '1.5px dashed rgba(45,212,191,0.4)', background: 'rgba(45,212,191,0.05)', color: isUploadingPlan ? '#2dd4bf' : 'var(--text-secondary)', cursor: isUploadingPlan ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', transition: 'all 0.2s ease', width: '100%' }}
+                        <input
+                            ref={planFileInputRef}
+                            id="dashboard-plan-file-input"
+                            type="file"
+                            accept="application/pdf,text/plain,.pdf,.txt,.doc,.docx"
+                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
+                            onChange={handlePlanFileUpload}
+                        />
+                        <label
+                            htmlFor="dashboard-plan-file-input"
+                            onClick={(e) => isUploadingPlan && e.preventDefault()}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '12px', border: '1.5px dashed rgba(45,212,191,0.4)', background: 'rgba(45,212,191,0.05)', color: isUploadingPlan ? '#2dd4bf' : 'var(--text-secondary)', cursor: isUploadingPlan ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', transition: 'all 0.2s ease', width: '100%', boxSizing: 'border-box' }}
                         >
                             {isUploadingPlan
                                 ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Scanning file with AI...</>
-                                : <><Upload size={18} /> Upload Plan (PDF, image, or text)</>}
-                        </button>
+                                : <><Upload size={18} /> Upload Plan (PDF or text)</>}
+                        </label>
 
                         {/* Error message */}
                         {uploadError && (
