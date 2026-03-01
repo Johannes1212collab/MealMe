@@ -86,19 +86,56 @@ function App() {
             setUserMacroPlan(data.macro_plan);
             if (data.macro_plan.name) setDisplayName(data.macro_plan.name);
           }
-          if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
-            setConsumedMacros(data.consumed_macros);
+
+          // ── Date rollover check: done HERE before restoring state ──────────────────
+          // This MUST happen before we call setMealResponses / setConsumedMacros,
+          // because syncToCloud would otherwise race us and write last_active_date=today
+          // with yesterday's meal data — making future loads think no rollover is needed.
+          const todayStr = new Date().toLocaleDateString();
+          const lastActive = data.last_active_date;
+          const isNewDay = lastActive && lastActive !== todayStr;
+
+          if (isNewDay) {
+            // Archive yesterday into weekly history
+            const yesterdayEntry = {
+              date: lastActive,
+              targetCals: data.macro_plan?.calories || 0,
+              consumedCals: data.consumed_macros?.calories || 0,
+              netDeficit: (data.macro_plan?.calories || 0) - (data.consumed_macros?.calories || 0),
+              meals: data.meal_responses || []
+            };
+            const existingHistory = data.weekly_history || [];
+            const updatedHistory = [...existingHistory, yesterdayEntry].slice(-7);
+            setWeeklyHistory(updatedHistory);
+            localStorage.setItem('mealme_weekly_history', JSON.stringify(updatedHistory));
+
+            // Reset today's counters — do NOT load yesterday's stale meals/macros
+            setConsumedMacros({ calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
+            setMealResponses([]);
+
+            // Write clean state to Supabase immediately so syncToCloud sees correct data
+            await supabase.from('profiles').update({
+              weekly_history: updatedHistory,
+              consumed_macros: { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 },
+              meal_responses: [],
+              last_active_date: todayStr
+            }).eq('id', userId);
+          } else {
+            // Same day — restore normally
+            if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
+              setConsumedMacros(data.consumed_macros);
+            }
+            if (data.meal_responses && data.meal_responses.length > 0) {
+              setMealResponses(data.meal_responses);
+            }
           }
-          if (data.meal_responses && data.meal_responses.length > 0) {
-            setMealResponses(data.meal_responses);
-          }
-          if (data.weekly_history && data.weekly_history.length > 0) {
+
+          if (data.weekly_history && data.weekly_history.length > 0 && !isNewDay) {
             setWeeklyHistory(data.weekly_history);
             localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
           }
-          if (data.last_active_date) {
-            localStorage.setItem('mealme_current_date', data.last_active_date);
-          }
+          // Always stamp today's date locally
+          localStorage.setItem('mealme_current_date', todayStr);
         } else if (localFlag === '1') {
           // Profile row missing but local flag says they onboarded — let them through
           setIsOnboarded(true);
@@ -171,44 +208,32 @@ function App() {
     syncToCloud();
   }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses, weeklyHistory, session]);
 
-  // Midnight Rollover Script
+
+  // ── Visibility-change rollover: handles users who keep the app open past midnight ──
   useEffect(() => {
-    if (!userMacroPlan) return; // Wait until onboarded to trigger rollover logic
-
-    const todayStr = new Date().toLocaleDateString();
-    const storedDate = localStorage.getItem('mealme_current_date');
-
-    if (storedDate && storedDate !== todayStr) {
-      // Date mismatch detected! Execute midnight rollover.
-      const surplusDeficit = userMacroPlan.calories - consumedMacros.calories;
-
-      const savedHistory = localStorage.getItem('mealme_weekly_history');
-      let historyArray = savedHistory ? JSON.parse(savedHistory) : [];
-
-      historyArray.push({
-        date: storedDate,
-        targetCals: userMacroPlan.calories,
-        consumedCals: consumedMacros.calories,
-        netDeficit: surplusDeficit,
-        meals: mealResponses
+    const checkDateOnFocus = () => {
+      if (document.visibilityState !== 'visible') return;
+      const todayStr = new Date().toLocaleDateString();
+      const stored = localStorage.getItem('mealme_current_date');
+      if (!stored || stored === todayStr) return;
+      // New day detected while app was open — archive and reset
+      setWeeklyHistory(prev => {
+        const entry = {
+          date: stored,
+          targetCals: userMacroPlan?.calories || 0,
+          consumedCals: consumedMacros.calories,
+          netDeficit: (userMacroPlan?.calories || 0) - consumedMacros.calories,
+          meals: mealResponses
+        };
+        return [...prev, entry].slice(-7);
       });
-
-      // Maintain trailing 7 days
-      if (historyArray.length > 7) {
-        historyArray = historyArray.slice(historyArray.length - 7);
-      }
-      // Update both React state (primary) and localStorage (cache)
-      setWeeklyHistory(historyArray);
-      localStorage.setItem('mealme_weekly_history', JSON.stringify(historyArray));
-
-      // Reset the current day's trackers
-      setConsumedMacros({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+      setConsumedMacros({ calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
       setMealResponses([]);
-    }
-
-    // Always log today's date
-    localStorage.setItem('mealme_current_date', todayStr);
-  }, [userMacroPlan]); // Runs once when userMacroPlan becomes available
+      localStorage.setItem('mealme_current_date', todayStr);
+    };
+    document.addEventListener('visibilitychange', checkDateOnFocus);
+    return () => document.removeEventListener('visibilitychange', checkDateOnFocus);
+  }, [userMacroPlan, consumedMacros, mealResponses]);
 
   const handleOnboardingComplete = (planData) => {
     // Embed the _onboarded marker directly into the plan so Supabase always
