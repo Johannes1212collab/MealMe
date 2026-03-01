@@ -9,7 +9,10 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
 
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
+    const [isUploadingPlan, setIsUploadingPlan] = useState(false);
+    const [uploadError, setUploadError] = useState('');
     const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+    const planFileInputRef = useRef(null); // MUST be declared — used in the plan scan input
 
     const totalWeeklyDeficit = weeklyHistory.reduce((sum, day) => sum + (day.netDeficit || 0), 0);
     const weeklyWeightLossPace = (totalWeeklyDeficit / 3500).toFixed(2);
@@ -69,7 +72,54 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
             fats: plan.fats,
             tdee: plan.tdee || '',
         });
+        setUploadError('');
         setIsEditingCoachPlan(true);
+    };
+
+    // Scan a file (photo or PDF) and auto-fill the draft form via Gemini AI
+    const handlePlanFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploadError('');
+        setIsUploadingPlan(true);
+        try {
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Data, mimeType: file.type, fileName: file.name, remainingMacros: {} })
+            });
+            const result = await response.json();
+            if (result.status === 'success' && result.data) {
+                const d = result.data;
+                const protein = d.protein || 0;
+                const carbs = d.carbs || 0;
+                const fats = d.fats || 0;
+                const cals = d.calories || Math.round((protein * 4) + (carbs * 4) + (fats * 9));
+                setCoachPlanDraft(prev => ({
+                    ...prev,
+                    calories: cals,
+                    protein,
+                    carbs,
+                    fats,
+                    tdee: d.tdee || prev.tdee
+                }));
+                setUploadError('');
+            } else {
+                setUploadError(result.message || 'Could not extract targets from this file. Please fill in the fields manually.');
+            }
+        } catch (err) {
+            console.error('Plan scan error:', err);
+            setUploadError('Scan failed — check your connection. Fill in the fields manually below.');
+        } finally {
+            setIsUploadingPlan(false);
+            if (planFileInputRef.current) planFileInputRef.current.value = '';
+        }
     };
 
 
@@ -78,10 +128,37 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
             {isEditingCoachPlan && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
                     <div style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto', background: '#1a1625', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ClipboardList size={20} color="var(--primary-light)" /> Update Your Plan
                         </h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Enter your macro targets from your coach below.</p>
+
+                        {/* ── Scan a file (image or PDF) → auto-fill fields ── */}
+                        <input
+                            ref={planFileInputRef}
+                            id="plan-scan-input"
+                            type="file"
+                            accept="image/*,application/pdf,text/plain,.pdf,.txt,.doc,.docx"
+                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
+                            onChange={handlePlanFileUpload}
+                        />
+                        <label
+                            htmlFor="plan-scan-input"
+                            onClick={(e) => isUploadingPlan && e.preventDefault()}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '12px', border: '1.5px dashed rgba(231,156,74,0.45)', background: 'rgba(231,156,74,0.06)', color: isUploadingPlan ? 'var(--primary-light)' : 'var(--text-secondary)', cursor: isUploadingPlan ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', boxSizing: 'border-box', width: '100%' }}
+                        >
+                            {isUploadingPlan
+                                ? <><Loader2 size={18} className="spin-icon" /> Scanning with AI...</>
+                                : <><Upload size={18} /> Scan plan photo or PDF</>}
+                        </label>
+                        {uploadError && (
+                            <p style={{ color: '#f08090', fontSize: '0.8rem', margin: 0, lineHeight: 1.4 }}>⚠️ {uploadError}</p>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>or enter manually</span>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                        </div>
 
                         {[['Daily Calories (kcal)', 'calories'], ['Protein (g)', 'protein'], ['Carbs (g)', 'carbs'], ['Fats (g)', 'fats'], ['TDEE (kcal)', 'tdee']].map(([label, key]) => (
                             <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
