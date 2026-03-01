@@ -1,12 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { ArrowRight, Activity, Target, User, Scale, Ruler, FileText, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import { calculateBMR, calculateTDEE, generateMacroPlan, parseCoachPlan } from '../utils/calculations';
-import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';
+import { API_BASE_URL } from '../utils/api';
 import './Onboarding.css';
-
-// Set up PDF worker using unpkg CDN based on the installed version
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export default function Onboarding({ onComplete }) {
     const [step, setStep] = useState(1);
@@ -23,6 +19,7 @@ export default function Onboarding({ onComplete }) {
     // State for importing a coach plan
     const [importMode, setImportMode] = useState(false);
     const [rawPlanText, setRawPlanText] = useState('');
+    const [parsedPlan, setParsedPlan] = useState(null); // Set when server returns direct plan from file
     const [parsedImportError, setParsedImportError] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const fileInputRef = useRef(null);
@@ -37,52 +34,62 @@ export default function Onboarding({ onComplete }) {
         return generateMacroPlan(data.weight, tdee, data.goal);
     };
 
-    const extractTextFromPDF = async (arrayBuffer) => {
-        const loadingTask = pdfjsLib.getDocument(arrayBuffer);
-        const pdf = await loadingTask.promise;
-        let fullText = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const strings = content.items.map(item => item.str);
-            fullText += strings.join(' ') + ' ';
-        }
-        return fullText;
-    };
-
+    // Send file to server for AI-powered macro extraction (no heavy client libs needed)
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         setIsExtracting(true);
         setParsedImportError(false);
+        setParsedPlan(null);
+        setRawPlanText('');
 
         try {
-            if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
-                const arrayBuffer = await file.arrayBuffer();
-                const text = await extractTextFromPDF(arrayBuffer);
-                setRawPlanText(text);
-            } else if (file.name.toLowerCase().endsWith('.docx') || file.type.includes("wordprocessingml.document")) {
-                const arrayBuffer = await file.arrayBuffer();
-                const result = await mammoth.extractRawText({ arrayBuffer });
-                setRawPlanText(result.value);
+            // Convert to base64
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Data, mimeType: file.type, fileName: file.name })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success' && result.data && result.data.calories > 0) {
+                // Server returned a complete plan — store it and show a summary to the user
+                setParsedPlan(result.data);
+                // Also populate the textarea so user can see what was extracted
+                setRawPlanText(
+                    `Calories: ${result.data.calories}\nProtein: ${result.data.protein}g\nCarbs: ${result.data.carbs}g\nFats: ${result.data.fats}g\nTDEE: ${result.data.tdee || ''}\n\n${result.data.details || ''}`
+                );
             } else {
-                // Assume basic text or csv
-                const text = await file.text();
-                setRawPlanText(text);
+                setParsedImportError(true);
+                setRawPlanText('Could not extract targets from this file. Please paste your plan text below instead.');
             }
         } catch (error) {
-            console.error("Error reading file:", error);
+            console.error('File upload error:', error);
             setParsedImportError(true);
-            setRawPlanText("Failed to read document text. Please try pasting instead.");
+            setRawPlanText('Failed to read document. Please paste your plan text below instead.');
         } finally {
             setIsExtracting(false);
-            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
     const handleNext = () => {
         if (importMode) {
+            // If server returned a complete plan from a file, use it directly
+            if (parsedPlan && parsedPlan.calories > 0) {
+                onComplete({ ...parsedPlan, name: data.name || parsedPlan.name || '' });
+                return;
+            }
+            // Otherwise try to parse the pasted text
             const result = parseCoachPlan(rawPlanText);
             if (result.isValid) {
                 onComplete({ ...result.plan, name: data.name });
