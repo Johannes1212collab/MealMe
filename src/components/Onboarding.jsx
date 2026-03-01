@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { ArrowRight, Activity, Target, User, Scale, Ruler, FileText, CheckCircle, Upload, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Activity, Target, User, Scale, Ruler, FileText, CheckCircle } from 'lucide-react';
 import { calculateBMR, calculateTDEE, generateMacroPlan, parseCoachPlan } from '../utils/calculations';
-import { API_BASE_URL } from '../utils/api';
 import './Onboarding.css';
 
 export default function Onboarding({ onComplete }) {
@@ -19,10 +18,7 @@ export default function Onboarding({ onComplete }) {
     // State for importing a coach plan
     const [importMode, setImportMode] = useState(false);
     const [rawPlanText, setRawPlanText] = useState('');
-    const [parsedPlan, setParsedPlan] = useState(null); // Set when server returns direct plan from file
     const [parsedImportError, setParsedImportError] = useState(false);
-    const [isExtracting, setIsExtracting] = useState(false);
-    const fileInputRef = useRef(null);
 
     const updateData = (field, value) => {
         setData(prev => ({ ...prev, [field]: value }));
@@ -34,62 +30,8 @@ export default function Onboarding({ onComplete }) {
         return generateMacroPlan(data.weight, tdee, data.goal);
     };
 
-    // Send file to server for AI-powered macro extraction (no heavy client libs needed)
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setIsExtracting(true);
-        setParsedImportError(false);
-        setParsedPlan(null);
-        setRawPlanText('');
-
-        try {
-            // Convert to base64
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
-            const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ base64Data, mimeType: file.type, fileName: file.name })
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'success' && result.data && result.data.calories > 0) {
-                // Server returned a complete plan — store it and show a summary to the user
-                setParsedPlan(result.data);
-                // Also populate the textarea so user can see what was extracted
-                setRawPlanText(
-                    `Calories: ${result.data.calories}\nProtein: ${result.data.protein}g\nCarbs: ${result.data.carbs}g\nFats: ${result.data.fats}g\nTDEE: ${result.data.tdee || ''}\n\n${result.data.details || ''}`
-                );
-            } else {
-                setParsedImportError(true);
-                setRawPlanText('Could not extract targets from this file. Please paste your plan text below instead.');
-            }
-        } catch (error) {
-            console.error('File upload error:', error);
-            setParsedImportError(true);
-            setRawPlanText('Failed to read document. Please paste your plan text below instead.');
-        } finally {
-            setIsExtracting(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-
     const handleNext = () => {
         if (importMode) {
-            // If server returned a complete plan from a file, use it directly
-            if (parsedPlan && parsedPlan.calories > 0) {
-                onComplete({ ...parsedPlan, name: data.name || parsedPlan.name || '' });
-                return;
-            }
-            // Otherwise try to parse the pasted text
             const result = parseCoachPlan(rawPlanText);
             if (result.isValid) {
                 onComplete({ ...result.plan, name: data.name });
@@ -144,46 +86,7 @@ export default function Onboarding({ onComplete }) {
                 {importMode ? (
                     <div className="step-card animate-slide-up import-card">
                         <h3><FileText size={20} className="inline-icon" /> Import Coach's Plan</h3>
-                        <p className="editor-desc mb-md">Paste your raw text, or upload a PDF/DOCX. Our AI will automatically extract your Calories, Protein, Carbs, and Fats.</p>
-
-                        <div className="upload-section">
-                            {(() => {
-                                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-                                if (isStandalone) {
-                                    return (
-                                        <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(231,156,74,0.1)', border: '1px solid rgba(231,156,74,0.3)', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                            📋 <strong style={{ color: 'var(--primary-light)' }}>Paste your plan below</strong> — file upload works better in the browser. Open MealMe in Safari or Chrome to upload a document.
-                                        </div>
-                                    );
-                                }
-                                return (
-                                    <>
-                                        <input
-                                            type="file"
-                                            id="onboarding-file-input"
-                                            ref={fileInputRef}
-                                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
-                                            accept=".txt,.csv,.pdf,.doc,.docx"
-                                            onChange={handleFileUpload}
-                                        />
-                                        <label
-                                            htmlFor="onboarding-file-input"
-                                            className={`upload-btn${isExtracting ? ' disabled' : ''}`}
-                                            style={{ cursor: isExtracting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                                            onClick={(e) => isExtracting && e.preventDefault()}
-                                        >
-                                            {isExtracting ? (
-                                                <><Loader2 size={16} className="spinner" /> Analyzing Document...</>
-                                            ) : (
-                                                <><Upload size={16} /> Upload Document</>
-                                            )}
-                                        </label>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        <div className="divider-text">PASTE YOUR PLAN</div>
+                        <p className="editor-desc mb-md">Paste your plan text below. Our AI will automatically extract your Calories, Protein, Carbs, and Fats targets.</p>
 
                         <textarea
                             className="plan-textarea"
