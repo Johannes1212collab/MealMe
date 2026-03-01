@@ -197,13 +197,19 @@ function App() {
   useEffect(() => {
     if (!session || !isOnboarded) return;
     const syncToCloud = async () => {
-      await supabase.from('profiles').update({
+      const updatePayload = {
         macro_plan: userMacroPlan || {},
         consumed_macros: consumedMacros,
         meal_responses: mealResponses,
         last_active_date: new Date().toLocaleDateString(),
-        weekly_history: weeklyHistory
-      }).eq('id', session.user.id);
+      };
+      // SAFETY: never overwrite weekly_history with an empty array.
+      // If React state is empty (e.g. during state initialisation or a reset),
+      // leave the Supabase history column untouched.
+      if (weeklyHistory.length > 0) {
+        updatePayload.weekly_history = weeklyHistory;
+      }
+      await supabase.from('profiles').update(updatePayload).eq('id', session.user.id);
     };
     syncToCloud();
   }, [isOnboarded, userMacroPlan, consumedMacros, mealResponses, weeklyHistory, session]);
@@ -234,22 +240,6 @@ function App() {
     document.addEventListener('visibilitychange', checkDateOnFocus);
     return () => document.removeEventListener('visibilitychange', checkDateOnFocus);
   }, [userMacroPlan, consumedMacros, mealResponses]);
-
-  // Reset today's log — clears stale meals that carried over from a previous day
-  const handleResetToday = async () => {
-    const empty = { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 };
-    setMealResponses([]);
-    setConsumedMacros(empty);
-    localStorage.setItem('mealme_current_date', new Date().toLocaleDateString());
-    if (session?.user?.id) {
-      await supabase.from('profiles').update({
-        meal_responses: [],
-        consumed_macros: empty,
-        last_active_date: new Date().toLocaleDateString()
-      }).eq('id', session.user.id);
-    }
-  };
-
 
   const handleOnboardingComplete = (planData) => {
     // Embed the _onboarded marker directly into the plan so Supabase always
@@ -740,7 +730,6 @@ function App() {
           onReaddMeal={handleReaddMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
           onEditMealPortion={handleEditMealPortion}
-          onResetToday={handleResetToday}
         />  </main>
 
       <div className="action-bar">
