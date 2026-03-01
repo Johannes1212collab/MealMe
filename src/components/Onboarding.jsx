@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Activity, Target, User, Scale, Ruler, FileText, CheckCircle } from 'lucide-react';
 import { calculateBMR, calculateTDEE, generateMacroPlan, parseCoachPlan } from '../utils/calculations';
+import { supabase } from '../utils/supabase';
 import './Onboarding.css';
 
 export default function Onboarding({ onComplete }) {
@@ -244,6 +245,18 @@ export default function Onboarding({ onComplete }) {
                     {importMode ? 'Import Plan' : (step === 4 ? 'Generate Plan' : 'Next')} <ArrowRight size={18} />
                 </button>
             </div>
+
+            {/* Escape hatch for existing users who land here incorrectly */}
+            <button
+                onClick={async () => { await supabase.auth.signOut(); }}
+                style={{
+                    background: 'none', border: 'none', color: 'var(--text-muted)',
+                    fontSize: '0.75rem', cursor: 'pointer', marginTop: '16px',
+                    fontFamily: 'var(--font-primary)', opacity: 0.7, padding: '4px 8px'
+                }}
+            >
+                Already set up? Sign out →
+            </button>
         </div>
     );
 }
