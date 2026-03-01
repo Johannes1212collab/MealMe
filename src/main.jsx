@@ -9,23 +9,21 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Register service worker for PWA support
+// Service worker: trigger the self-destructing SW to wipe old caches,
+// then deliberately do NOT re-register so users always get fresh code.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-
-      // Force the browser to check for a new SW version on every page load.
-      // Without this, browsers only check every 24h or when the user navigates.
-      registration.update();
-
-      // When a new SW takes over (fires after skipWaiting + clients.claim),
-      // automatically reload so users get the fresh code — no hard refresh needed.
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
+      // If an old SW exists, register the new self-destructing SW.
+      // It will unregister itself and reload the page with fresh JS.
+      const existing = await navigator.serviceWorker.getRegistration('/');
+      if (existing) {
+        // Register the self-destructing SW which will wipe caches and reload
+        await navigator.serviceWorker.register('/sw.js');
+      }
+      // If no existing SW, we're already clean — no need to register anything
     } catch (err) {
-      console.warn('SW registration failed:', err);
+      console.warn('SW operation failed:', err);
     }
   });
 }

@@ -147,29 +147,43 @@ export default function Onboarding({ onComplete }) {
                         <p className="editor-desc mb-md">Paste your raw text, or upload a PDF/DOCX. Our AI will automatically extract your Calories, Protein, Carbs, and Fats.</p>
 
                         <div className="upload-section">
-                            <input
-                                type="file"
-                                id="onboarding-file-input"
-                                ref={fileInputRef}
-                                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
-                                accept=".txt,.csv,.pdf,.doc,.docx"
-                                onChange={handleFileUpload}
-                            />
-                            <label
-                                htmlFor="onboarding-file-input"
-                                className={`upload-btn${isExtracting ? ' disabled' : ''}`}
-                                style={{ cursor: isExtracting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                                onClick={(e) => isExtracting && e.preventDefault()}
-                            >
-                                {isExtracting ? (
-                                    <><Loader2 size={16} className="spinner" /> Analyzing Document...</>
-                                ) : (
-                                    <><Upload size={16} /> Upload Document</>
-                                )}
-                            </label>
+                            {(() => {
+                                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                                if (isStandalone) {
+                                    return (
+                                        <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(231,156,74,0.1)', border: '1px solid rgba(231,156,74,0.3)', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                            📋 <strong style={{ color: 'var(--primary-light)' }}>Paste your plan below</strong> — file upload works better in the browser. Open MealMe in Safari or Chrome to upload a document.
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <>
+                                        <input
+                                            type="file"
+                                            id="onboarding-file-input"
+                                            ref={fileInputRef}
+                                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
+                                            accept=".txt,.csv,.pdf,.doc,.docx"
+                                            onChange={handleFileUpload}
+                                        />
+                                        <label
+                                            htmlFor="onboarding-file-input"
+                                            className={`upload-btn${isExtracting ? ' disabled' : ''}`}
+                                            style={{ cursor: isExtracting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                                            onClick={(e) => isExtracting && e.preventDefault()}
+                                        >
+                                            {isExtracting ? (
+                                                <><Loader2 size={16} className="spinner" /> Analyzing Document...</>
+                                            ) : (
+                                                <><Upload size={16} /> Upload Document</>
+                                            )}
+                                        </label>
+                                    </>
+                                );
+                            })()}
                         </div>
 
-                        <div className="divider-text">OR PASTE TEXT</div>
+                        <div className="divider-text">PASTE YOUR PLAN</div>
 
                         <textarea
                             className="plan-textarea"

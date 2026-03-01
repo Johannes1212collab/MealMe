@@ -1,84 +1,35 @@
-// ─── Cache version: bump this whenever you need to force cache invalidation ───
-const CACHE_NAME = 'mealme-v3';
+// ─── NUCLEAR CACHE BUSTER (v4) ───────────────────────────────────────────────
+// This SW's only job is to:
+//   1. Delete every cache that exists
+//   2. Unregister itself so the next load has NO service worker
+//   3. Navigate all open clients to get genuinely fresh HTML + JS from the network
+//
+// Once the fresh code lands, main.jsx will NOT re-register a new SW,
+// so users stay cache-free until we deliberately add a new one.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Only pre-cache icon/manifest assets — NOT index.html
-const PRECACHE_ASSETS = [
-    '/manifest.json',
-    '/icon-192.png',
-    '/icon-512.png'
-];
-
-// Install: pre-cache only static icon assets
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
-    );
+self.addEventListener('install', () => {
+    // Take control immediately — don't wait for old SW to finish
     self.skipWaiting();
 });
 
-// Activate: delete ALL old caches, claim clients
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-        ).then(() => self.clients.claim())
+        caches.keys()
+            // 1. Wipe every cache
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            // 2. Unregister this SW — next load will have no SW at all
+            .then(() => self.registration.unregister())
+            // 3. Force every open tab/window to reload via the network
+            .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+            .then((clients) => Promise.all(clients.map((c) => c.navigate(c.url))))
     );
 });
 
+// While this transitional SW is briefly active, always go to the network
 self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
-
-    // ── 1. API / external requests → always network, no caching ──────────────
-    if (url.hostname !== self.location.hostname || url.pathname.startsWith('/api')) {
-        event.respondWith(fetch(request));
-        return;
+    const url = new URL(event.request.url);
+    if (url.hostname === self.location.hostname) {
+        event.respondWith(fetch(event.request));
     }
-
-    // ── 2. HTML navigation (index.html) → NETWORK-FIRST ──────────────────────
-    // index.html has no content hash so it can change on every deploy.
-    if (request.mode === 'navigate') {
-        event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    if (response && response.status === 200) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    }
-                    return response;
-                })
-                .catch(() => caches.match(request))
-        );
-        return;
-    }
-
-    // ── 3. Vite-hashed assets (/assets/*.js, /assets/*.css) → CACHE-FIRST ────
-    if (url.pathname.startsWith('/assets/')) {
-        event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) return cached;
-                return fetch(request).then((response) => {
-                    if (response && response.status === 200 && response.type === 'basic') {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    }
-                    return response;
-                });
-            })
-        );
-        return;
-    }
-
-    // ── 4. Everything else → NETWORK-FIRST with cache fallback
-    event.respondWith(
-        fetch(request)
-            .then((response) => {
-                if (response && response.status === 200) {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                }
-                return response;
-            })
-            .catch(() => caches.match(request))
-    );
 });
