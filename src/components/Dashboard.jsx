@@ -406,31 +406,36 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                         )}
                                     </div>
                                     {isExpanded && hasMacros && (
-                                        <div className="plan-item-macros animate-slide-up">
-                                            <span>🔥 {meal.macros.cals}kcal</span>
-                                            <span>🥩 {meal.macros.protein}g Prot</span>
-                                            <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                                <span>🍞 {meal.macros.carbs}g Carb</span>
-                                                {meal.macros.fiber > 0 && (
-                                                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-success)', paddingLeft: '2px' }}>
-                                                        ↳ {meal.macros.fiber}g fiber · {Math.max(0, meal.macros.carbs - meal.macros.fiber)}g net
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span>🥑 {meal.macros.fats}g Fat</span>
-                                            {/* Portion editor */}
+                                        <div className="plan-item-macros animate-slide-up" style={{ flexDirection: 'column', gap: '10px' }}>
+                                            {/* Macro row */}
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', alignItems: 'flex-start' }}>
+                                                <span>🔥 {meal.macros.cals}kcal</span>
+                                                <span>🥩 {meal.macros.protein}g Prot</span>
+                                                <span>
+                                                    🍞 {meal.macros.carbs}g Carb
+                                                    {meal.macros.fiber > 0 && (
+                                                        <span style={{ fontSize: '0.68rem', color: 'var(--accent-success)', marginLeft: '4px' }}>
+                                                            ({meal.macros.fiber}g fiber)
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span>🥑 {meal.macros.fats}g Fat</span>
+                                            </div>
+
+                                            {/* Portion editor — separate row below macros */}
                                             {onEditMealPortion && meal.id && (
-                                                <div className="portion-editor">
+                                                <div className="portion-editor" style={{ width: '100%' }}>
                                                     <span className="portion-label">
                                                         {meal.portionMultiplier && meal.portionMultiplier < 1
                                                             ? `Adjusted to ${Math.round(meal.portionMultiplier * 100)}%${meal.portionNote ? ` · ${meal.portionNote}` : ''}`
                                                             : 'How much did you eat?'}
                                                     </span>
-                                                    <div className="portion-presets">
+                                                    <div className="portion-presets" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
                                                         {[['¼', 0.25, 'a quarter'], ['½', 0.5, 'half'], ['¾', 0.75, 'three quarters'], ['All', 1.0, '']].map(([label, val, note]) => (
                                                             <button
                                                                 key={label}
                                                                 className={`portion-btn${Math.abs((meal.portionMultiplier || 1) - val) < 0.01 ? ' active' : ''}`}
+                                                                style={{ flex: '1', minWidth: '50px' }}
                                                                 onClick={(e) => { e.stopPropagation(); onEditMealPortion(meal.id, val, note); }}
                                                             >
                                                                 {label}
