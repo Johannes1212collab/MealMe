@@ -62,7 +62,7 @@ export default function FileUpload({ onAnalysisComplete, remainingMacros, apiBas
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,application/pdf,text/plain,.txt,.pdf"
+                accept="application/pdf,text/plain,.txt,.pdf,.doc,.docx"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
                 id="file-upload-input"
