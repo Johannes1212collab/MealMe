@@ -8,10 +8,8 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
 
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
-    const [isUploadingPlan, setIsUploadingPlan] = useState(false);
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
     const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
-    const [uploadError, setUploadError] = useState('');
 
     const totalWeeklyDeficit = weeklyHistory.reduce((sum, day) => sum + (day.netDeficit || 0), 0);
     const weeklyWeightLossPace = (totalWeeklyDeficit / 3500).toFixed(2);
@@ -74,113 +72,16 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
         setIsEditingCoachPlan(true);
     };
 
-    const handlePlanFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        setUploadError('');
-
-        // File size guard: 15MB max
-        if (file.size > 15 * 1024 * 1024) {
-            setUploadError('File is too large (max 15 MB). Try compressing the PDF or taking a photo instead.');
-            if (planFileInputRef.current) planFileInputRef.current.value = '';
-            return;
-        }
-
-        // Unsupported type guard (iOS HEIC etc.)
-        const unsupported = ['image/heic', 'image/heif'];
-        if (unsupported.includes(file.type.toLowerCase())) {
-            setUploadError('HEIC/HEIF images are not supported. Please take a screenshot and upload that as a JPEG or PNG instead.');
-            if (planFileInputRef.current) planFileInputRef.current.value = '';
-            return;
-        }
-
-        setIsUploadingPlan(true);
-        try {
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-            const response = await fetch(`${API_BASE_URL}/api/analyze-file`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ base64Data, mimeType: file.type, remainingMacros: {} }),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            const result = await response.json();
-            if (result.status === 'success' && result.data) {
-                const d = result.data;
-                setCoachPlanDraft(prev => {
-                    const protein = d.protein || prev.protein;
-                    const carbs = d.carbs || prev.carbs;
-                    const fats = d.fats || prev.fats;
-                    const calculatedCals = Math.round((protein * 4) + (carbs * 4) + (fats * 9));
-                    return { calories: calculatedCals, protein, carbs, fats, tdee: d.tdee || prev.tdee };
-                });
-                setUploadError('');
-            } else {
-                setUploadError(result.message || result.error || 'Could not extract nutrition data from this file. Try a clearer image or a different PDF.');
-            }
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                setUploadError('Upload timed out after 30 seconds. Check your connection and try a smaller file.');
-            } else {
-                setUploadError('Upload failed — could not reach the server. Please try again.');
-            }
-            console.error('Plan file upload error:', err);
-        } finally {
-            setIsUploadingPlan(false);
-            if (planFileInputRef.current) planFileInputRef.current.value = '';
-        }
-    };
 
     return (
         <div className="dashboard-container">
             {isEditingCoachPlan && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div style={{ width: '100%', maxWidth: '420px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto', background: '#1a1625', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ClipboardList size={20} color="var(--primary-light)" /> Upload a Plan
+                            <ClipboardList size={20} color="var(--primary-light)" /> Update Your Plan
                         </h3>
-
-                        {/* File Upload Section */}
-                        <input
-                            ref={planFileInputRef}
-                            id="dashboard-plan-file-input"
-                            type="file"
-                            accept="application/pdf,text/plain,.pdf,.txt,.doc,.docx"
-                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
-                            onChange={handlePlanFileUpload}
-                        />
-                        <label
-                            htmlFor="dashboard-plan-file-input"
-                            onClick={(e) => isUploadingPlan && e.preventDefault()}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', borderRadius: '12px', border: '1.5px dashed rgba(45,212,191,0.4)', background: 'rgba(45,212,191,0.05)', color: isUploadingPlan ? '#2dd4bf' : 'var(--text-secondary)', cursor: isUploadingPlan ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', transition: 'all 0.2s ease', width: '100%', boxSizing: 'border-box' }}
-                        >
-                            {isUploadingPlan
-                                ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Scanning file with AI...</>
-                                : <><Upload size={18} /> Upload Plan (PDF or text)</>}
-                        </label>
-
-                        {/* Error message */}
-                        {uploadError && (
-                            <div style={{ padding: '10px 14px', background: 'rgba(229,90,106,0.12)', border: '1px solid rgba(229,90,106,0.3)', borderRadius: '10px', color: '#f08090', fontSize: '0.82rem', lineHeight: 1.4 }}>
-                                ⚠️ {uploadError}
-                            </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>or enter manually</span>
-                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                        </div>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Enter your macro targets from your coach below.</p>
 
                         {[['Daily Calories (kcal)', 'calories'], ['Protein (g)', 'protein'], ['Carbs (g)', 'carbs'], ['Fats (g)', 'fats'], ['TDEE (kcal)', 'tdee']].map(([label, key]) => (
                             <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -189,7 +90,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                     type="number"
                                     value={coachPlanDraft[key]}
                                     onChange={(e) => setCoachPlanDraft(prev => ({ ...prev, [key]: e.target.value }))}
-                                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '1rem', fontFamily: 'var(--font-primary)' }}
+                                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '1rem', fontFamily: 'var(--font-primary)' }}
                                 />
                             </div>
                         ))}
