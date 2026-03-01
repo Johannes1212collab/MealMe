@@ -142,22 +142,24 @@ export default function Onboarding({ onComplete }) {
                         <div className="upload-section">
                             <input
                                 type="file"
+                                id="onboarding-file-input"
                                 ref={fileInputRef}
-                                style={{ display: 'none' }}
+                                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
                                 accept=".txt,.csv,.pdf,.doc,.docx"
                                 onChange={handleFileUpload}
                             />
-                            <button
-                                className="upload-btn"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isExtracting}
+                            <label
+                                htmlFor="onboarding-file-input"
+                                className={`upload-btn${isExtracting ? ' disabled' : ''}`}
+                                style={{ cursor: isExtracting ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                                onClick={(e) => isExtracting && e.preventDefault()}
                             >
                                 {isExtracting ? (
                                     <><Loader2 size={16} className="spinner" /> Analyzing Document...</>
                                 ) : (
                                     <><Upload size={16} /> Upload Document</>
                                 )}
-                            </button>
+                            </label>
                         </div>
 
                         <div className="divider-text">OR PASTE TEXT</div>
