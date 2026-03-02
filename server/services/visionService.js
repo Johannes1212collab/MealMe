@@ -102,16 +102,29 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             prompt = mealPrompt;
         }
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
-            contents: [
-                { inlineData: { mimeType: activeMimeType, data: cleanBase64 } },
-                { text: prompt }
-            ],
-            config: {
-                responseMimeType: "application/json"
+        const contents = [
+            { inlineData: { mimeType: activeMimeType, data: cleanBase64 } },
+            { text: prompt }
+        ];
+
+        // Try models in order — fall back if one fails
+        const models = ['gemini-3.1-pro-preview', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+        let response;
+        let lastError;
+        for (const model of models) {
+            try {
+                response = await ai.models.generateContent({
+                    model,
+                    contents,
+                    config: { responseMimeType: 'application/json' }
+                });
+                break; // success — exit loop
+            } catch (modelErr) {
+                lastError = modelErr;
+                console.warn(`Vision model ${model} failed, trying next:`, modelErr.message);
             }
-        });
+        }
+        if (!response) throw lastError;
 
         const parsedData = JSON.parse(response.text);
 
