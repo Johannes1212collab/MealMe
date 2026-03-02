@@ -392,13 +392,17 @@ function App() {
     setIsCameraOpen(false);
 
     if (backendResponse.error || !backendResponse.name) {
-      // Fallback or error handling
+      // Show visible error so we can diagnose the actual failure in production
+      const errMsg = backendResponse.message || 'Analysis failed — unknown error';
+      console.error('Vision error:', errMsg);
       setShowAnalysis(false);
       if ('speechSynthesis' in window) {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance("Sorry, I had trouble analyzing that image.");
         synthRef.current.speak(utterance);
       }
+      // Temporary visible toast so we can see the real error on device
+      setTimeout(() => alert(`Vision error: ${errMsg}`), 500);
       return;
     }
 

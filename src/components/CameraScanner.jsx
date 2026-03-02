@@ -122,26 +122,48 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         cameraFallbackRef.current?.click();
     };
 
-    // ── File picker (gallery or camera fallback) ───────────────────
+    // ── File picker (gallery / native camera) ──────────────────────
+    // Compress before sending: phone camera JPEGs are 10-20MB; base64 makes
+    // them even larger and will exceed most server platform request limits.
+    // We resize to ≤1280px longest-side at JPEG 0.82, keeping Gemini accuracy
+    // while keeping the payload under ~500KB.
+    const compressImage = (dataUrl) => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX = 1280;
+            let { width, height } = img;
+            if (width > MAX || height > MAX) {
+                if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+                else { width = Math.round(width * MAX / height); height = MAX; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = dataUrl;
+    });
+
     const handleFileSelect = async e => {
         const file = e.target.files[0];
         if (!file) return;
         const previewUrl = URL.createObjectURL(file);
         const reader = new FileReader();
         reader.onloadend = async () => {
-            const base64String = reader.result;
             stopStream();
-            // Always store the preview so it shows behind the scan line during analysis
-            setPendingImage({ base64: base64String, previewUrl });
+            const compressed = await compressImage(reader.result);
+            // Store preview (use original blob URL for display quality)
+            setPendingImage({ base64: compressed, previewUrl });
             if (scanMode === 'ingredients') {
                 setScanStep('intent');
             } else {
-                await submitToAPI(base64String, scanMode, null);
+                await submitToAPI(compressed, scanMode, null);
             }
         };
         reader.readAsDataURL(file);
         e.target.value = '';
     };
+
 
     // ── Voice intent ───────────────────────────────────────────────
     const handleIntentSubmit = async () => {
