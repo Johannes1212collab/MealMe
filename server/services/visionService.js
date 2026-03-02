@@ -107,23 +107,38 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             { text: prompt }
         ];
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
-            contents,
-            config: { responseMimeType: 'application/json' }
-        });
+        // Retry up to 3 times on transient 503 "high demand" errors
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) {
+                const delay = attempt * 2000; // 2s, then 4s
+                console.warn(`Gemini 503 on attempt ${attempt}, retrying in ${delay}ms…`);
+                await sleep(delay);
+            }
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-3.1-pro-preview',
+                    contents,
+                    config: { responseMimeType: 'application/json' }
+                });
+                const parsedData = JSON.parse(response.text);
+                return { status: 'success', data: parsedData };
+            } catch (err) {
+                lastError = err;
+                const msg = (err.message || '').toLowerCase();
+                const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
+                if (!isRetryable) break; // Don't retry on non-transient errors
+            }
+        }
 
-        const parsedData = JSON.parse(response.text);
-
-        return {
-            status: 'success',
-            data: parsedData
-        };
+        throw lastError;
     } catch (error) {
         console.error("Vision Error:", error);
-        return {
-            status: 'error',
-            message: error.message || 'Failed to analyze image'
-        };
+        const msg = (error.message || '');
+        const friendlyMsg = (msg.includes('503') || msg.includes('UNAVAILABLE'))
+            ? 'Gemini is under high demand right now — please try again in a moment.'
+            : msg || 'Failed to analyze image';
+        return { status: 'error', message: friendlyMsg };
     }
 };

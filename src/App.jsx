@@ -24,6 +24,7 @@ function App() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [iosInstallType, setIosInstallType] = useState(null); // 'safari' | 'other-browser' | null
+  const [cameraErrorMsg, setCameraErrorMsg] = useState('');
 
   const [session, setSession] = useState(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -392,17 +393,16 @@ function App() {
     setIsCameraOpen(false);
 
     if (backendResponse.error || !backendResponse.name) {
-      // Show visible error so we can diagnose the actual failure in production
-      const errMsg = backendResponse.message || 'Analysis failed — unknown error';
+      const errMsg = backendResponse.message || 'Analysis failed';
       console.error('Vision error:', errMsg);
       setShowAnalysis(false);
+      setCameraErrorMsg(errMsg);
+      setTimeout(() => setCameraErrorMsg(''), 6000);
       if ('speechSynthesis' in window) {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance("Sorry, I had trouble analyzing that image.");
         synthRef.current.speak(utterance);
       }
-      // Temporary visible toast so we can see the real error on device
-      setTimeout(() => alert(`Vision error: ${errMsg}`), 500);
       return;
     }
 
@@ -770,6 +770,20 @@ function App() {
         onAdd={handleAddFoodToPlan}
         onResultUpdate={(corrected) => setSuggestionData(corrected)}
       />
+      {/* Camera analysis error toast */}
+      {cameraErrorMsg && (
+        <div style={{
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(21,18,32,0.97)', border: '1px solid rgba(229,90,106,0.4)',
+          borderRadius: '14px', padding: '12px 20px', zIndex: 500,
+          color: '#f08090', fontSize: '0.85rem', fontFamily: 'var(--font-primary)',
+          maxWidth: '88vw', textAlign: 'center', lineHeight: 1.4,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)',
+          animation: 'slideUp 0.25s ease'
+        }}>
+          ⚠️ {cameraErrorMsg}
+        </div>
+      )}
     </div>
   );
 }
