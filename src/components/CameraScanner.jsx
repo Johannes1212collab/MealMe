@@ -115,31 +115,13 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         resetState();
     };
 
-    // ── Capture from live video ────────────────────────────────────
+    // ── Capture button: stop stream → native camera picker → FileReader ──────
+    // getUserMedia is kept for the live preview only. The actual photo is captured
+    // by the OS native camera (proven to work with Gemini 3.1) via the hidden
+    // file input processed by handleFileSelect / FileReader below.
     const captureFromVideo = () => {
-        if (cameraError || !cameraReady) {
-            cameraFallbackRef.current?.click();
-            return;
-        }
-        const video = videoRef.current;
-        // Safety guard: if video hasn't rendered a real frame yet, fall back
-        if (!video || !video.videoWidth || !video.videoHeight) {
-            cameraFallbackRef.current?.click();
-            return;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const base64 = canvas.toDataURL('image/jpeg', 0.88);
-        stopStream();
-        // Always store captured image so it's visible behind the scan line
-        setPendingImage({ base64, previewUrl: base64 });
-        if (scanMode === 'ingredients') {
-            setScanStep('intent');
-        } else {
-            submitToAPI(base64, scanMode, null);
-        }
+        stopStream(); // free the camera so native picker can use it
+        cameraFallbackRef.current?.click();
     };
 
     // ── File picker (gallery or camera fallback) ───────────────────
