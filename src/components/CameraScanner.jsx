@@ -115,12 +115,10 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         resetState();
     };
 
-    // ── Capture button: stop stream → native camera picker → FileReader ──────
-    // getUserMedia is kept for the live preview only. The actual photo is captured
-    // by the OS native camera (proven to work with Gemini 3.1) via the hidden
-    // file input processed by handleFileSelect / FileReader below.
+    // ── Capture button: trigger native camera picker → FileReader ──────────────
+    // Stream stays live until the photo comes back from the native camera.
+    // handleFileSelect calls stopStream() once the file is received.
     const captureFromVideo = () => {
-        stopStream(); // free the camera so native picker can use it
         cameraFallbackRef.current?.click();
     };
 
