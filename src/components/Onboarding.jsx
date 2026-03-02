@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { ArrowRight, Activity, Target, User, Scale, Ruler, FileText, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowRight, Activity, Target, User, Scale, FileText, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import { calculateBMR, calculateTDEE, generateMacroPlan, parseCoachPlan } from '../utils/calculations';
 import { supabase } from '../utils/supabase';
+import { API_BASE_URL } from '../utils/api';
 import './Onboarding.css';
+
 
 export default function Onboarding({ onComplete }) {
     const [step, setStep] = useState(1);
@@ -20,6 +22,58 @@ export default function Onboarding({ onComplete }) {
     const [importMode, setImportMode] = useState(false);
     const [rawPlanText, setRawPlanText] = useState('');
     const [parsedImportError, setParsedImportError] = useState(false);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
+    const [fileUploadError, setFileUploadError] = useState('');
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+    const [installOS, setInstallOS] = useState('android');
+    const planFileRef = useRef(null);
+
+    // Detect in-app browsers (Messenger, Instagram, Facebook, WhatsApp, etc.)
+    useEffect(() => {
+        const ua = navigator.userAgent || '';
+        const inApp = /FBAN|FBAV|FB_IAB|Instagram|MessengerLite|WhatsApp|TikTok|Line\/|MicroMessenger/i.test(ua);
+        if (inApp) {
+            setShowInstallBanner(true);
+            setInstallOS(/iPad|iPhone|iPod/.test(ua) ? 'ios' : 'android');
+        }
+    }, []);
+
+    // Upload a coach plan file (image or PDF) — AI extracts the macro targets
+    const handlePlanFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setFileUploadError('');
+        setIsUploadingFile(true);
+        try {
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            const res = await fetch(`${API_BASE_URL}/api/analyze-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base64Data, mimeType: file.type, fileName: file.name, remainingMacros: {} })
+            });
+            const result = await res.json();
+            if (result.status === 'success' && result.data) {
+                const d = result.data;
+                const protein = d.protein || 0;
+                const carbs = d.carbs || 0;
+                const fats = d.fats || 0;
+                const calories = d.calories || Math.round((protein * 4) + (carbs * 4) + (fats * 9));
+                onComplete({ calories, protein, carbs, fats, tdee: d.tdee || calories + 500, name: data.name });
+            } else {
+                setFileUploadError('Could not extract plan from this file. Please paste the text below instead.');
+            }
+        } catch {
+            setFileUploadError('Upload failed — check your connection and try again.');
+        } finally {
+            setIsUploadingFile(false);
+            if (planFileRef.current) planFileRef.current.value = '';
+        }
+    };
 
     const updateData = (field, value) => {
         setData(prev => ({ ...prev, [field]: value }));
@@ -52,6 +106,28 @@ export default function Onboarding({ onComplete }) {
 
     return (
         <div className="onboarding-container">
+
+            {/* Install-to-homescreen banner — shown only inside in-app browsers */}
+            {showInstallBanner && (
+                <div style={{ margin: '0 0 14px', padding: '12px 14px', borderRadius: '12px', background: 'rgba(231,156,74,0.08)', border: '1px solid rgba(231,156,74,0.3)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ color: 'var(--primary-light)', fontWeight: 700, fontSize: '0.88rem', margin: '0 0 4px' }}>📲 Install MealMe on your Home Screen</p>
+                            {installOS === 'ios' ? (
+                                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', margin: 0, lineHeight: 1.5 }}>
+                                    Tap the <strong style={{ color: '#fff' }}>Share ⬆️</strong> button at the bottom of Safari, then tap <strong style={{ color: '#fff' }}>&ldquo;Add to Home Screen&rdquo;</strong>
+                                </p>
+                            ) : (
+                                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', margin: 0, lineHeight: 1.5 }}>
+                                    Open in <strong style={{ color: '#fff' }}>Chrome</strong>, tap the menu <strong style={{ color: '#fff' }}>⋮</strong>, then <strong style={{ color: '#fff' }}>&ldquo;Add to Home Screen&rdquo;</strong>
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={() => setShowInstallBanner(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '1rem', padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                    </div>
+                </div>
+            )}
+
             <div className="onboarding-header">
                 <div className="app-logo text-gradient mb-4">MealMe</div>
                 <h2>{importMode ? "Import Your Plan" : "Create Your Plan"}</h2>
@@ -87,54 +163,74 @@ export default function Onboarding({ onComplete }) {
                 {importMode ? (
                     <div className="step-card animate-slide-up import-card">
                         <h3><FileText size={20} className="inline-icon" /> Import Coach's Plan</h3>
-                        <p className="editor-desc mb-md">Paste your plan text below. Our AI will automatically extract your Calories, Protein, Carbs, and Fats targets.</p>
+                        <p className="editor-desc mb-md">Scan a photo or PDF of your plan, or paste the text — AI extracts your targets automatically.</p>
 
+                        {/* File upload */}
+                        <input ref={planFileRef} id="onboard-plan-file" type="file"
+                            accept="image/*,application/pdf,text/plain,.pdf,.txt,.doc,.docx"
+                            style={{ position: 'absolute', width: 1, height: 1, opacity: 0, overflow: 'hidden', zIndex: -1 }}
+                            onChange={handlePlanFileUpload} />
+                        <label htmlFor="onboard-plan-file"
+                            onClick={e => isUploadingFile && e.preventDefault()}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '13px', borderRadius: '12px', border: '1.5px dashed rgba(231,156,74,0.45)', background: 'rgba(231,156,74,0.06)', color: isUploadingFile ? 'var(--primary-light)' : 'rgba(255,255,255,0.6)', cursor: isUploadingFile ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-primary)', fontSize: '0.88rem', width: '100%', boxSizing: 'border-box', marginBottom: 14 }}>
+                            {isUploadingFile ? <><Loader2 size={18} className="spin-icon" /> Scanning with AI...</> : <><Upload size={17} /> Scan plan photo or PDF</>}
+                        </label>
+                        {fileUploadError && <p style={{ color: '#f08090', fontSize: '0.8rem', margin: '0 0 10px', lineHeight: 1.4 }}>⚠️ {fileUploadError}</p>}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>or paste text</span>
+                            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                        </div>
+
+                        {/*
+                          Explicit inline colors here — CSS variables like var(--text-primary) are
+                          not always resolved in Messenger / FB in-app browsers, causing
+                          invisible text (white-on-white or black-on-black). Hard-coded values fix it.
+                        */}
                         <textarea
-                            className="plan-textarea"
-                            placeholder="e.g. Here is your plan for the week: 2100 calories, 160g protein, 200g carbs, 70g fats."
+                            placeholder="e.g. 2100 calories, 160g protein, 200g carbs, 70g fats"
                             value={rawPlanText}
-                            onChange={(e) => {
-                                setRawPlanText(e.target.value);
-                                setParsedImportError(false);
+                            onChange={(e) => { setRawPlanText(e.target.value); setParsedImportError(false); }}
+                            rows={5}
+                            style={{
+                                width: '100%', boxSizing: 'border-box',
+                                background: 'rgba(0,0,0,0.45)',
+                                border: '1px solid rgba(255,255,255,0.14)',
+                                borderRadius: '10px', padding: '12px 14px',
+                                color: '#ffffff',
+                                caretColor: '#ffffff',
+                                fontSize: '0.92rem',
+                                fontFamily: 'system-ui, sans-serif',
+                                lineHeight: 1.5, resize: 'vertical', outline: 'none'
                             }}
-                            rows={6}
                         />
 
-                        {parsedImportError && !isExtracting && (
-                            <div className="error-msg">
-                                Could not automatically extract the plan targets. Please ensure Calories and Protein are stated clearly.
-                            </div>
+                        {parsedImportError && (
+                            <div className="error-msg">Could not extract the plan. Make sure Calories and Protein are stated clearly.</div>
                         )}
 
-                        {(rawPlanText.length > 10 && !parsedImportError && !isExtracting) && (
-                            <div className="live-preview glass-panel">
-                                {(() => {
-                                    const result = parseCoachPlan(rawPlanText);
-                                    if (!result.isValid) return null;
-                                    const p = result.plan;
-
-                                    return (
-                                        <>
-                                            <div className="preview-title">
-                                                <CheckCircle size={16} className="inline-icon" />
-                                                {result.isAiDerived ? "AI Derived (Meals Summarized):" : "AI Extracted (Explicit Numbers):"}
-                                            </div>
-                                            {result.isAiDerived && (
-                                                <div className="text-sm text-secondary mb-2" style={{ fontSize: '0.8rem', marginBottom: '8px', color: 'var(--text-secondary)' }}>
-                                                    No explicit daily totals found. AI has estimated your daily macros by analyzing the food list in the document.
-                                                </div>
-                                            )}
-                                            <div className="preview-grid">
-                                                <span>🔥 {p.calories || '-'} kcal</span>
-                                                <span>🥩 {p.protein || '-'}g Prot</span>
-                                                <span>🍞 {p.carbs || '-'}g Carb</span>
-                                                <span>🥑 {p.fats || '-'}g Fat</span>
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        )}
+                        {rawPlanText.length > 10 && !parsedImportError && (() => {
+                            try {
+                                const result = parseCoachPlan(rawPlanText);
+                                if (!result.isValid) return null;
+                                const p = result.plan;
+                                return (
+                                    <div className="live-preview glass-panel" style={{ marginTop: 10 }}>
+                                        <div className="preview-title">
+                                            <CheckCircle size={16} className="inline-icon" />
+                                            {result.isAiDerived ? 'AI Derived:' : 'Extracted:'}
+                                        </div>
+                                        <div className="preview-grid">
+                                            <span>🔥 {p.calories || '-'} kcal</span>
+                                            <span>🥩 {p.protein || '-'}g Prot</span>
+                                            <span>🍞 {p.carbs || '-'}g Carb</span>
+                                            <span>🥑 {p.fats || '-'}g Fat</span>
+                                        </div>
+                                    </div>
+                                );
+                            } catch { return null; }
+                        })()}
                     </div>
                 ) : (
                     <>
