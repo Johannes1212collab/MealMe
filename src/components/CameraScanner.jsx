@@ -131,8 +131,9 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         reader.onloadend = async () => {
             const base64String = reader.result;
             stopStream();
+            // Always store the preview so it shows behind the scan line during analysis
+            setPendingImage({ base64: base64String, previewUrl });
             if (scanMode === 'ingredients') {
-                setPendingImage({ base64: base64String, previewUrl });
                 setScanStep('intent');
             } else {
                 await submitToAPI(base64String, scanMode, null);
