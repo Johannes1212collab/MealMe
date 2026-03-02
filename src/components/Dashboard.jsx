@@ -4,8 +4,10 @@ import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
 export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion }) {
-    const [isEditingProtein, setIsEditingProtein] = useState(false);
+    const [isEditingProtein, setIsEditingProtein] = useState(false); // kept for prop compatibility
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
+    const [editingMacro, setEditingMacro] = useState(null); // 'protein' | 'carbs' | 'fats'
+    const [macroInputValue, setMacroInputValue] = useState('');
 
     const [coachPlanDraft, setCoachPlanDraft] = useState({ calories: '', protein: '', carbs: '', fats: '', tdee: '' });
     const [isEditingCoachPlan, setIsEditingCoachPlan] = useState(false);
@@ -30,7 +32,6 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
         tdee: 2200
     };
 
-    const [localProtein, setLocalProtein] = useState(plan.protein);
 
     // Real consumed values
     const consumed = consumedMacros || {
@@ -40,16 +41,76 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
         fats: 0
     };
 
-    const handleProteinChange = (e) => {
-        setLocalProtein(parseInt(e.target.value));
+    const openMacroEdit = (macro) => {
+        setEditingMacro(macro);
+        setMacroInputValue(String(plan[macro]));
     };
 
-    const handleSaveProtein = () => {
-        setIsEditingProtein(false);
-        if (onPlanUpdate) {
-            onPlanUpdate(localProtein);
+    const cancelMacroEdit = () => setEditingMacro(null);
+
+    const saveMacroEdit = () => {
+        const newVal = parseInt(macroInputValue);
+        if (!newVal || newVal < 1) { setEditingMacro(null); return; }
+        const targetCals = plan.calories;
+        let newPlan = { ...plan };
+
+        const rebalanceOtherTwo = (lockedMacro, lockedG, macroA, calPerA, macroB, calPerB) => {
+            const lockedCals = lockedG * (lockedMacro === 'fats' ? 9 : 4);
+            const remaining = targetCals - lockedCals;
+            if (remaining <= 0) return { [macroA]: 0, [macroB]: 0 };
+            const currentACals = plan[macroA] * calPerA;
+            const currentBCals = plan[macroB] * calPerB;
+            const total = currentACals + currentBCals;
+            if (total <= 0) {
+                // Split evenly if both were 0
+                return { [macroA]: Math.round(remaining / 2 / calPerA), [macroB]: Math.round(remaining / 2 / calPerB) };
+            }
+            return {
+                [macroA]: Math.round((remaining * (currentACals / total)) / calPerA),
+                [macroB]: Math.round((remaining * (currentBCals / total)) / calPerB),
+            };
+        };
+
+        if (editingMacro === 'protein') {
+            const others = rebalanceOtherTwo('protein', newVal, 'carbs', 4, 'fats', 9);
+            newPlan = { ...newPlan, protein: newVal, ...others };
+        } else if (editingMacro === 'carbs') {
+            const others = rebalanceOtherTwo('carbs', newVal, 'protein', 4, 'fats', 9);
+            newPlan = { ...newPlan, carbs: newVal, ...others };
+        } else if (editingMacro === 'fats') {
+            const others = rebalanceOtherTwo('fats', newVal, 'protein', 4, 'carbs', 4);
+            newPlan = { ...newPlan, fats: newVal, ...others };
         }
+
+        if (onCoachPlanUpdate) onCoachPlanUpdate(newPlan);
+        setEditingMacro(null);
     };
+
+    // Inline editor renderer used inside each macro stat-card
+    const MacroInlineEditor = ({ macro, label }) => (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <input
+                    type="number"
+                    autoFocus
+                    value={macroInputValue}
+                    onChange={e => setMacroInputValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveMacroEdit(); if (e.key === 'Escape') cancelMacroEdit(); }}
+                    style={{ width: 64, background: 'transparent', border: 'none', borderBottom: '2px solid var(--primary-light)', color: 'var(--text-primary)', fontSize: '1.3rem', fontWeight: 800, fontFamily: 'var(--font-primary)', outline: 'none', padding: '2px 0' }}
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>g {label}</span>
+            </div>
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>others rebalance to hit {plan.calories} kcal</span>
+            <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
+                <button onClick={cancelMacroEdit} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'var(--font-primary)' }}>Cancel</button>
+                <button onClick={saveMacroEdit} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', background: 'var(--primary-light)', color: '#000', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, fontFamily: 'var(--font-primary)' }}>Save</button>
+            </div>
+        </div>
+    );
+
+    const handleProteinChange = () => { }; // legacy no-op
+    const handleSaveProtein = () => { }; // legacy no-op
+    const localProtein = plan.protein; // legacy alias
 
     const handleSaveCoachPlan = () => {
         if (onCoachPlanUpdate) {
@@ -153,24 +214,13 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                         {uploadError && (
                             <p style={{ color: '#f08090', fontSize: '0.8rem', margin: 0, lineHeight: 1.4 }}>⚠️ {uploadError}</p>
                         )}
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>or enter manually</span>
-                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-                        </div>
-
-                        {[['Daily Calories (kcal)', 'calories'], ['Protein (g)', 'protein'], ['Carbs (g)', 'carbs'], ['Fats (g)', 'fats'], ['TDEE (kcal)', 'tdee']].map(([label, key]) => (
-                            <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{label}</label>
-                                <input
-                                    type="number"
-                                    value={coachPlanDraft[key]}
-                                    onChange={(e) => setCoachPlanDraft(prev => ({ ...prev, [key]: e.target.value }))}
-                                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text-primary)', fontSize: '1rem', fontFamily: 'var(--font-primary)' }}
-                                />
+                        {/* Scanned preview */}
+                        {!uploadError && !isUploadingPlan && coachPlanDraft.protein && (
+                            <div style={{ background: 'rgba(45,212,191,0.07)', border: '1px solid rgba(45,212,191,0.2)', borderRadius: '10px', padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                <strong style={{ color: 'var(--text-primary)' }}>Scanned values:</strong><br />
+                                {coachPlanDraft.calories} kcal &nbsp;·&nbsp; {coachPlanDraft.protein}g protein &nbsp;·&nbsp; {coachPlanDraft.carbs}g carbs &nbsp;·&nbsp; {coachPlanDraft.fats}g fats
                             </div>
-                        ))}
+                        )}
                         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                             <button onClick={() => setIsEditingCoachPlan(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>Cancel</button>
                             <button onClick={handleSaveCoachPlan} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light) 0%, #00d2ff 100%)', color: '#000', fontWeight: '700', cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>Save Plan</button>
@@ -201,24 +251,55 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     </div>
                 </div>
 
-                <div className="stat-card glass-panel interactive" onClick={() => !isEditingProtein && setIsEditingProtein(true)}>
+                <div className="stat-card glass-panel interactive" onClick={() => !editingMacro && openMacroEdit('protein')}>
                     <div className="stat-icon prot"><Target size={20} /></div>
-                    <div className="stat-info">
-                        <span className="stat-value">{consumed.protein}g</span>
-                        <span className="stat-label">/ {plan.protein}g Protein</span>
-                    </div>
-                    {!isEditingProtein && <Settings2 size={16} className="edit-icon" />}
+                    {editingMacro === 'protein' ? (
+                        <MacroInlineEditor macro="protein" label="protein" />
+                    ) : (
+                        <>
+                            <div className="stat-info">
+                                <span className="stat-value">{consumed.protein}g</span>
+                                <span className="stat-label">/ {plan.protein}g Protein</span>
+                            </div>
+                            <Settings2 size={16} className="edit-icon" />
+                        </>
+                    )}
                 </div>
 
-                <div className="stat-card glass-panel full-width">
-                    <div className="stat-icon carbs"><Activity size={20} /></div>
-                    <div className="stat-info">
-                        <span className="stat-value">{consumed.carbs}g</span>
-                        <span className="stat-label">/ {plan.carbs}g Carbs</span>
+                {/* Carbs + Fats — each half is independently clickable */}
+                <div className="stat-card glass-panel full-width" style={{ gap: 0, padding: 0, overflow: 'hidden' }}>
+                    <div
+                        onClick={() => !editingMacro && openMacroEdit('carbs')}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '16px 14px', cursor: editingMacro ? 'default' : 'pointer', borderRight: '1px solid rgba(255,255,255,0.07)', minWidth: 0 }}
+                    >
+                        <div className="stat-icon carbs" style={{ flexShrink: 0 }}><Activity size={18} /></div>
+                        {editingMacro === 'carbs' ? (
+                            <MacroInlineEditor macro="carbs" label="carbs" />
+                        ) : (
+                            <>
+                                <div className="stat-info" style={{ minWidth: 0 }}>
+                                    <span className="stat-value">{consumed.carbs}g</span>
+                                    <span className="stat-label">/ {plan.carbs}g Carbs</span>
+                                </div>
+                                <Settings2 size={13} className="edit-icon" style={{ flexShrink: 0 }} />
+                            </>
+                        )}
                     </div>
-                    <div className="stat-info ml-auto">
-                        <span className="stat-value">{consumed.fats}g</span>
-                        <span className="stat-label">/ {plan.fats}g Fats</span>
+                    <div
+                        onClick={() => !editingMacro && openMacroEdit('fats')}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '16px 14px', cursor: editingMacro ? 'default' : 'pointer', justifyContent: 'flex-end', minWidth: 0 }}
+                    >
+                        {editingMacro === 'fats' ? (
+                            <MacroInlineEditor macro="fats" label="fats" />
+                        ) : (
+                            <>
+                                <Settings2 size={13} className="edit-icon" style={{ flexShrink: 0 }} />
+                                <div className="stat-info ml-auto" style={{ minWidth: 0 }}>
+                                    <span className="stat-value">{consumed.fats}g</span>
+                                    <span className="stat-label">/ {plan.fats}g Fats</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -332,36 +413,6 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     )}
                 </div>
             )}
-
-            {
-                isEditingProtein && (
-                    <div className="protein-editor glass-panel animate-slide-up">
-                        <div className="editor-header">
-                            <h3>Adjust Protein Target</h3>
-                            <span className="badge">Fixed Calories</span>
-                        </div>
-                        <p className="editor-desc">Everything else will adjust to maintain your {plan.calories} kcal limit.</p>
-
-                        <div className="slider-container">
-                            <input
-                                type="range"
-                                min="50"
-                                max="300"
-                                step="5"
-                                value={localProtein}
-                                onChange={handleProteinChange}
-                                className="protein-slider"
-                            />
-                            <div className="slider-val text-gradient">{localProtein}g</div>
-                        </div>
-
-                        <div className="editor-actions">
-                            <button className="cancel-btn" onClick={() => { setLocalProtein(plan.protein); setIsEditingProtein(false); }}>Cancel</button>
-                            <button className="save-btn" onClick={handleSaveProtein}>Save Changes</button>
-                        </div>
-                    </div>
-                )
-            }
 
             <div className="todays-plan glass-panel">
                 <div className="plan-header">
