@@ -71,7 +71,21 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
             };
         };
 
-        if (editingMacro === 'protein') {
+        if (editingMacro === 'calories') {
+            // Scale all three macros proportionally to the new calorie target
+            if (plan.calories > 0) {
+                const scale = newVal / plan.calories;
+                newPlan = {
+                    ...newPlan,
+                    calories: newVal,
+                    protein: Math.round(plan.protein * scale),
+                    carbs: Math.round(plan.carbs * scale),
+                    fats: Math.round(plan.fats * scale),
+                };
+            } else {
+                newPlan = { ...newPlan, calories: newVal };
+            }
+        } else if (editingMacro === 'protein') {
             const others = rebalanceOtherTwo('protein', newVal, 'carbs', 4, 'fats', 9);
             newPlan = { ...newPlan, protein: newVal, ...others };
         } else if (editingMacro === 'carbs') {
@@ -87,7 +101,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
     };
 
     // Inline editor renderer used inside each macro stat-card
-    const MacroInlineEditor = ({ macro, label }) => (
+    const MacroInlineEditor = ({ macro, label, unit = 'g', hint }) => (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                 <input
@@ -98,9 +112,9 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     onKeyDown={e => { if (e.key === 'Enter') saveMacroEdit(); if (e.key === 'Escape') cancelMacroEdit(); }}
                     style={{ width: 64, background: 'transparent', border: 'none', borderBottom: '2px solid var(--primary-light)', color: 'var(--text-primary)', fontSize: '1.3rem', fontWeight: 800, fontFamily: 'var(--font-primary)', outline: 'none', padding: '2px 0' }}
                 />
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>g {label}</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{unit} {label}</span>
             </div>
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>others rebalance to hit {plan.calories} kcal</span>
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{hint || `others rebalance to hit ${plan.calories} kcal`}</span>
             <div style={{ display: 'flex', gap: 5, marginTop: 4 }}>
                 <button onClick={cancelMacroEdit} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'var(--font-primary)' }}>Cancel</button>
                 <button onClick={saveMacroEdit} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: 'none', background: 'var(--primary-light)', color: '#000', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, fontFamily: 'var(--font-primary)' }}>Save</button>
@@ -243,12 +257,19 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
             </div>
 
             <div className="stats-grid">
-                <div className="stat-card glass-panel">
+                <div className="stat-card glass-panel interactive" onClick={() => !editingMacro && openMacroEdit('calories')}>
                     <div className="stat-icon kcal"><Flame size={20} /></div>
-                    <div className="stat-info">
-                        <span className="stat-value">{consumed.calories}</span>
-                        <span className="stat-label">/ {plan.calories} kcal</span>
-                    </div>
+                    {editingMacro === 'calories' ? (
+                        <MacroInlineEditor macro="calories" label="kcal" unit="" hint="protein, carbs & fats scale proportionally" />
+                    ) : (
+                        <>
+                            <div className="stat-info">
+                                <span className="stat-value">{consumed.calories}</span>
+                                <span className="stat-label">/ {plan.calories} kcal</span>
+                            </div>
+                            <Settings2 size={16} className="edit-icon" />
+                        </>
+                    )}
                 </div>
 
                 <div className="stat-card glass-panel interactive" onClick={() => !editingMacro && openMacroEdit('protein')}>
