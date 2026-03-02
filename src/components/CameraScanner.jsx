@@ -36,7 +36,9 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                 streamRef.current = stream;
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
-                    videoRef.current.onloadedmetadata = () => { if (!cancelled) setCameraReady(true); };
+                    // Use oncanplay instead of onloadedmetadata so we know
+                    // the first actual video frame is available before marking ready.
+                    videoRef.current.oncanplay = () => { if (!cancelled) setCameraReady(true); };
                 }
             } catch {
                 if (!cancelled) setCameraError(true);
@@ -120,6 +122,11 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
             return;
         }
         const video = videoRef.current;
+        // Safety guard: if video hasn't rendered a real frame yet, fall back
+        if (!video || !video.videoWidth || !video.videoHeight) {
+            cameraFallbackRef.current?.click();
+            return;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
