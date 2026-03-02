@@ -2,10 +2,6 @@
 .camera-overlay {
     position: fixed;
     inset: 0;
-    height: 100dvh;
-    /* dynamic viewport — accounts for browser chrome */
-    height: 100vh;
-    /* fallback */
     background: #0a0a0c;
     z-index: 300;
     display: flex;
@@ -14,7 +10,7 @@
     animation: fadeIn 0.25s ease;
 }
 
-/* ── Live camera video — fills entire background ─────────────── */
+/* ── Live camera video — fills entire overlay ───────────────── */
 .camera-video-bg {
     position: absolute;
     inset: 0;
@@ -24,16 +20,29 @@
     z-index: 0;
 }
 
-/* ── Floating header ─────────────────────────────────────────── */
-.camera-header-float {
+/* ── Middle zone: fills all space between header and controls ── */
+.camera-viewfinder-area {
+    flex: 1;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 5;
+}
+
+/* ── Header — flex item, always at top ──────────────────────── */
+.camera-header-float {
+    flex-shrink: 0;
     z-index: 10;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
     padding-top: max(12px, env(safe-area-inset-top));
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.65) 0%, transparent 100%);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 /* fallback for non-floating header (intent/scan screens) */
@@ -71,17 +80,13 @@
     flex-shrink: 0;
 }
 
-/* ── Viewfinder corners — floats over the video, vertically centred ─── */
+/* ── Viewfinder corners — centred within .camera-viewfinder-area ─── */
 .viewfinder-overlay {
-    position: absolute;
-    /* sits in the middle vertical space, slightly above centre to leave room for controls */
-    left: 12%;
-    right: 12%;
-    top: 50%;
-    transform: translateY(-58%);
+    position: relative;
+    width: 76%;
     aspect-ratio: 3/4;
-    max-height: 52vh;
-    z-index: 5;
+    max-height: calc(100% - 32px);
+    /* 16px breathing room top + bottom */
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -185,32 +190,29 @@
     }
 }
 
-/* ── Floating bottom controls ────────────────────────────────── */
+/* ── Bottom controls — flex item, always visible ─────────────── */
 .camera-controls-float {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    flex-shrink: 0;
     z-index: 10;
-    padding: 16px 20px;
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 60%, transparent 100%);
+    padding: 14px 20px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 70%, transparent 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
-/* fallback for non-floating controls (if ever used) */
+/* fallback */
 .camera-controls {
-    padding: 16px 20px;
+    flex-shrink: 0;
+    padding: 14px 20px;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    background: linear-gradient(to top, rgba(10, 10, 12, 0.95), rgba(10, 10, 12, 0));
-    flex-shrink: 0;
+    background: rgba(10, 10, 12, 0.9);
 }
 
 /* ── Mode pill ──────────────────────────────────────────────── */

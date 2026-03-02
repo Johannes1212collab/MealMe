@@ -260,18 +260,20 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                 <button className="icon-btn"><Zap size={24} /></button>
             </div>
 
-            {/* Viewfinder corners — always centered in remaining space */}
-            <div className="viewfinder-overlay">
-                <div className="corner top-left" /><div className="corner top-right" />
-                <div className="corner bottom-left" /><div className="corner bottom-right" />
-                <div className="camera-hint">
-                    {cameraError
-                        ? 'Tap capture to open camera'
-                        : !cameraReady
-                            ? 'Starting camera…'
-                            : scanMode === 'ingredients'
-                                ? 'Snap your ingredients'
-                                : 'Point at your food'}
+            {/* Middle zone fills remaining space — viewfinder is centred within it */}
+            <div className="camera-viewfinder-area">
+                <div className="viewfinder-overlay">
+                    <div className="corner top-left" /><div className="corner top-right" />
+                    <div className="corner bottom-left" /><div className="corner bottom-right" />
+                    <div className="camera-hint">
+                        {cameraError
+                            ? 'Tap capture to open camera'
+                            : !cameraReady
+                                ? 'Starting camera…'
+                                : scanMode === 'ingredients'
+                                    ? 'Snap your ingredients'
+                                    : 'Point at your food'}
+                    </div>
                 </div>
             </div>
 
