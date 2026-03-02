@@ -78,30 +78,44 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         setScanMode(newMode);
     };
 
+    const abortRef = useRef(null);
+
     const submitToAPI = async (base64String, mode, intent) => {
         setScanStep('scanning');
         setIsScanning(true);
+        const controller = new AbortController();
+        abortRef.current = controller;
+        // 45-second safety timeout — if Gemini doesn't respond, don't leave user stuck
+        const timer = setTimeout(() => controller.abort(), 45000);
         try {
             const response = await fetch(`${API_BASE_URL}/api/vision`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageBase64: base64String, mode, remainingMacros, recipeIntent: intent || undefined }),
+                signal: controller.signal,
             });
+            clearTimeout(timer);
             const json = await response.json();
             setIsScanning(false);
             resetState();
             onCapture(mode, json.status === 'success' ? json.data : { error: true, message: json.message });
-        } catch {
+        } catch (err) {
+            clearTimeout(timer);
             setIsScanning(false);
             resetState();
-            onCapture(mode, { error: true, message: 'Failed to connect' });
+            const msg = err.name === 'AbortError' ? 'Request timed out — please try again.' : 'Failed to connect';
+            onCapture(mode, { error: true, message: msg });
         }
+    };
+
+    const cancelScan = () => {
+        abortRef.current?.abort();
+        resetState();
     };
 
     // ── Capture from live video ────────────────────────────────────
     const captureFromVideo = () => {
         if (cameraError || !cameraReady) {
-            // Fallback: open native camera picker
             cameraFallbackRef.current?.click();
             return;
         }
@@ -110,10 +124,11 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
-        const base64 = canvas.toDataURL('image/jpeg', 0.92);
+        const base64 = canvas.toDataURL('image/jpeg', 0.88);
         stopStream();
+        // Always store captured image so it's visible behind the scan line
+        setPendingImage({ base64, previewUrl: base64 });
         if (scanMode === 'ingredients') {
-            setPendingImage({ base64, previewUrl: base64 });
             setScanStep('intent');
         } else {
             submitToAPI(base64, scanMode, null);
@@ -224,19 +239,23 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     // ── Scanning screen ────────────────────────────────────────────
     if (scanStep === 'scanning') {
         return (
-            <div className="camera-overlay" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                <div className="viewfinder-overlay" style={{ position: 'relative', width: '75%', aspectRatio: '3/4', maxHeight: '55vh' }}>
+            <div className="camera-overlay" style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20 }}>
+                <div className="viewfinder-overlay" style={{ position: 'relative', width: '78%', aspectRatio: '3/4', maxHeight: '52vh' }}>
                     {pendingImage && (
                         <img src={pendingImage.previewUrl} alt="Scanning"
-                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4, borderRadius: '8px' }} />
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.65, borderRadius: '8px' }} />
                     )}
                     <div className="corner top-left" /><div className="corner top-right" />
                     <div className="corner bottom-left" /><div className="corner bottom-right" />
                     <div className="scan-line" />
                     <div className="camera-hint">
-                        {recipeIntent ? `Calculating macros for ${recipeIntent}...` : 'AI analysing...'}
+                        {recipeIntent ? `Calculating macros for ${recipeIntent}…` : 'AI analysing…'}
                     </div>
                 </div>
+                <button onClick={cancelScan}
+                    style={{ padding: '10px 28px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-primary)', fontSize: '0.88rem', cursor: 'pointer', backdropFilter: 'blur(8px)' }}>
+                    Cancel
+                </button>
             </div>
         );
     }
