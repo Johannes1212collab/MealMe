@@ -82,7 +82,15 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             If vague (e.g., "didn't finish", "left some"), use 0.5 as a default.
             Include the meal being adjusted in mealReference (use the food word from their message).
 
-            ── NUTRITIONAL ACCURACY RULES ──
+            ── INTENT E: Multi-Venue / Multi-Stop Suggestion ──
+            The user mentions TWO OR MORE different restaurants or food destinations in the same message, and wants suggestions for each.
+            Examples:
+            • "Going to Maccas for lunch then MeetFresh after, what should I get at each?"
+            • "I'm hitting Subway for a snack and then Nando's for dinner"
+            • "We're doing KFC then dessert at Halo — what fits my macros?"
+            • "I'm at the food court, thinking Gong Cha and then something from the Thai place"
+            → Return type "multi_suggestion" with a "venues" array. Each venue gets 2 realistic options that together keep the user within their remaining macros for the day. Spread the calorie budget sensibly across each stop.
+
             These rules apply to ALL intents when producing macro numbers:
 
             1. PUBLISHED DATA FIRST: For any recognised fast-food or chain restaurant item, use the item's actual published nutritional data. Do not estimate a McDonald's Big Mac — you know it is 550 kcal, 25g protein, 43g carbs, 30g fat. Use that. Same for any other chain where authoritative data exists.
@@ -135,6 +143,30 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
                 "mealReference": "the food item mentioned, e.g. 'burger', 'pasta', 'pizza'",
                 "portionMultiplier": number between 0 and 1,
                 "portionNote": "brief human description e.g. 'shared with partner', 'half eaten'"
+            }
+
+            For INTENT E:
+            {
+                "type": "multi_suggestion",
+                "message": "Natural 1-2 sentence TTS-friendly response covering all stops.",
+                "venues": [
+                    {
+                        "venue": "Restaurant name",
+                        "mealLabel": "e.g. Lunch, Dessert, Snack",
+                        "options": [
+                            {
+                                "title": "Item name",
+                                "description": "Brief reason",
+                                "cals": integer,
+                                "protein": integer,
+                                "carbs": integer,
+                                "fiber": integer,
+                                "fats": integer,
+                                "isPerfectMatch": boolean
+                            }
+                        ]
+                    }
+                ]
             }
         `;
 

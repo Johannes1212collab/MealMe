@@ -530,6 +530,8 @@ function App() {
   };
 
   const handleSelectRecommendation = (selectedOption) => {
+    const isMultiVenue = !!selectedOption._venueLabel;
+
     // Accumulate the chosen AI macros into the daily consumed total
     setConsumedMacros(prev => ({
       calories: prev.calories + (selectedOption.cals || 0),
@@ -539,11 +541,11 @@ function App() {
       fats: prev.fats + (selectedOption.fats || 0)
     }));
 
-    // Push the chosen option to the visual log
+    // Push the chosen option to the visual log — use venue-labelled title for multi-venue items
     setMealResponses(prev => [...prev, {
       id: Date.now(),
       time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-      desc: selectedOption.title,
+      desc: selectedOption._venueLabel || selectedOption.title,
       status: 'completed',
       macros: {
         cals: selectedOption.cals || 0,
@@ -562,8 +564,12 @@ function App() {
       portionMultiplier: 1
     }]);
 
-    setShowRecommendations(false);
-    setAgentState('idle');
+    // For multi-venue: keep panel open so user can log each stop individually
+    // For single-venue: close as usual
+    if (!isMultiVenue) {
+      setShowRecommendations(false);
+      setAgentState('idle');
+    }
   };
 
   useEffect(() => {
