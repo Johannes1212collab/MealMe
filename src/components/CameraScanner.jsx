@@ -20,6 +20,12 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     const videoRef = useRef(null);
     const streamRef = useRef(null);
 
+    // ── Wake up the Render backend the moment the camera opens ──────
+    useEffect(() => {
+        if (!isOpen) return;
+        fetch(`${API_BASE_URL}/api/health`).catch(() => { });
+    }, [isOpen]);
+
     // ── Live camera stream ─────────────────────────────────────────
     useEffect(() => {
         if (!isOpen || scanStep !== 'capture') return;
@@ -89,8 +95,8 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         setIsScanning(true);
         const controller = new AbortController();
         abortRef.current = controller;
-        // 45-second safety timeout — if Gemini doesn't respond, don't leave user stuck
-        const timer = setTimeout(() => controller.abort(), 45000);
+        // 90-second safety timeout — enough for a Render cold start + Gemini analysis
+        const timer = setTimeout(() => controller.abort(), 90000);
         try {
             const response = await fetch(`${API_BASE_URL}/api/vision`, {
                 method: 'POST',
