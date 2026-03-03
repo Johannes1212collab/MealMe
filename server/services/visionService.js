@@ -143,9 +143,9 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
         // Retry up to 3 times on transient 503 "high demand" errors
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         let lastError;
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 5; attempt++) {
             if (attempt > 0) {
-                const delay = attempt * 2000; // 2s, then 4s
+                const delay = attempt * 3000; // 3s, 6s, 9s, 12s
                 console.warn(`Gemini 503 on attempt ${attempt}, retrying in ${delay}ms…`);
                 await sleep(delay);
             }
