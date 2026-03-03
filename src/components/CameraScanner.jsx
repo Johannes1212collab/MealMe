@@ -212,7 +212,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                         <img src={pendingImage.previewUrl} alt="Menu" style={{ width: '100%', maxHeight: 100, objectFit: 'cover', borderRadius: '14px', opacity: 0.8 }} />
                     </div>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', padding: '20px', gap: '14px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', gap: '14px', overflowY: 'auto' }}>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.4, textAlign: 'center' }}>
                         Tell MealMe what kind of option you're looking for and it'll pick the best match from the menu.
                     </p>
@@ -234,7 +234,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                     <button
                         onClick={() => submitToAPI(pendingImage.base64, 'menu', menuMealType)}
                         disabled={!pendingImage}
-                        style={{ padding: '14px', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light), var(--accent-secondary))', color: '#0e0c13', fontWeight: '700', fontSize: '1rem', fontFamily: 'var(--font-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        style={{ marginTop: 'auto', padding: '14px', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light), var(--accent-secondary))', color: '#0e0c13', fontWeight: '700', fontSize: '1rem', fontFamily: 'var(--font-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
                         <ChefHat size={18} /> Find Best {menuMealType.charAt(0).toUpperCase() + menuMealType.slice(1)}
                     </button>
