@@ -401,8 +401,8 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                                     {meal.macros && (
                                                         <button
                                                             onClick={() => {
-                                                                if (onLogHistoricalMeal) {
-                                                                    onLogHistoricalMeal(meal);
+                                                                if (onReaddMeal) {
+                                                                    onReaddMeal(meal);
                                                                     setSelectedHistoryDate(null);
                                                                 }
                                                             }}
