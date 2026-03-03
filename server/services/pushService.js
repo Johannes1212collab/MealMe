@@ -2,17 +2,26 @@ import webpush from 'web-push';
 
 const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL } = process.env;
 
-webpush.setVapidDetails(
-    VAPID_EMAIL || 'mailto:support@mealme.app',
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-);
+// Defer VAPID init — only configure if keys are present so missing env vars
+// don't crash the server at startup. Pushes simply won't send without them.
+let vapidReady = false;
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        VAPID_EMAIL || 'mailto:support@mealme.app',
+        VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY
+    );
+    vapidReady = true;
+} else {
+    console.warn('[pushService] VAPID keys not set — push notifications disabled.');
+}
 
 /**
  * Send a push notification to a single subscription object.
  * Returns true on success, false on gone (410/404 — subscription expired).
  */
 export const sendPush = async (subscription, payload) => {
+    if (!vapidReady) return false;
     try {
         await webpush.sendNotification(subscription, JSON.stringify(payload));
         return true;
@@ -37,4 +46,4 @@ export const sendPushToAll = async (subscriptions, payload) => {
     return expired;
 };
 
-export const vapidPublicKey = VAPID_PUBLIC_KEY;
+export const vapidPublicKey = VAPID_PUBLIC_KEY || null;

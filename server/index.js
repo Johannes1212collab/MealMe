@@ -119,14 +119,14 @@ app.get('/api/push/vapid-key', (req, res) => {
 // Save a new push subscription
 app.post('/api/push/subscribe', async (req, res) => {
     try {
-        const { userId, endpoint, p256dh, auth } = req.body;
+        const { userId, endpoint, p256dh, auth, timezone } = req.body;
         if (!userId || !endpoint || !p256dh || !auth) {
             return res.status(400).json({ error: 'userId, endpoint, p256dh, auth required' });
         }
-        // Upsert — one subscription per user/endpoint pair
+        // Upsert — one subscription per user/endpoint pair; store timezone for per-user 7:30 AM scheduling
         const { error } = await supabase
             .from('push_subscriptions')
-            .upsert({ user_id: userId, endpoint, p256dh, auth }, { onConflict: 'endpoint' });
+            .upsert({ user_id: userId, endpoint, p256dh, auth, timezone: timezone || 'UTC' }, { onConflict: 'endpoint' });
         if (error) throw error;
         res.json({ ok: true });
     } catch (err) {
@@ -148,17 +148,46 @@ app.delete('/api/push/unsubscribe', async (req, res) => {
 
 // ── Daily Check-In — node-cron (7:30 AM UTC daily) ───────────────────────────
 // NOTE: Render server must stay awake via UptimeRobot /api/health ping (every 14 min)
+// ── Timezone-aware daily check-in (runs every 15 min, sends per-user at their 7:30 AM) ──
 const sendDailyCheckIn = async () => {
-    console.log('[cron] Sending daily meal check-in push...');
     try {
         const { data: subs, error } = await supabase.from('push_subscriptions').select('*');
         if (error) throw error;
         if (!subs || subs.length === 0) return;
 
+        const toSend = [];
+        const todayByTz = {}; // cache computed local-date per timezone
+
+        for (const sub of subs) {
+            const tz = sub.timezone || 'UTC';
+
+            // Get the current local time in the user's timezone
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: tz,
+                hour: 'numeric', minute: 'numeric', hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            });
+            const parts = Object.fromEntries(formatter.formatToParts(new Date()).map(p => [p.type, p.value]));
+            const localHour = parseInt(parts.hour, 10);
+            const localMin = parseInt(parts.minute, 10);
+            const localDate = `${parts.year}-${parts.month}-${parts.day}`;
+
+            // Window: 7:30 AM – 7:44 AM local time
+            const inWindow = localHour === 7 && localMin >= 30 && localMin <= 44;
+            // Not already sent today
+            const alreadySent = sub.last_sent_date === localDate;
+
+            if (inWindow && !alreadySent) toSend.push({ sub, localDate });
+        }
+
+        if (toSend.length === 0) return;
+        console.log(`[cron] Sending daily check-in to ${toSend.length} user(s) in their 7:30 AM window`);
+
         const payload = {
             title: 'Plan your meals for today 🍽️',
             body: 'How many meals are you having today?',
             tag: 'daily-meal-checkin',
+            renotify: true,
             actions: [
                 { action: '2', title: '2 meals' },
                 { action: '3', title: '3 meals' },
@@ -169,22 +198,31 @@ const sendDailyCheckIn = async () => {
             data: { url: '/?mealPlan=prompt', type: 'meal-checkin' }
         };
 
-        const expired = await sendPushToAll(subs, payload);
+        const expired = [];
+        await Promise.allSettled(toSend.map(async ({ sub, localDate }) => {
+            const pushSub = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
+            const ok = await sendPush(pushSub, payload);
+            if (!ok) {
+                expired.push(sub.endpoint);
+            } else {
+                // Stamp last_sent_date so we don't send again today
+                await supabase.from('push_subscriptions')
+                    .update({ last_sent_date: localDate })
+                    .eq('endpoint', sub.endpoint);
+            }
+        }));
 
-        // Clean up expired subscriptions
         if (expired.length > 0) {
             await supabase.from('push_subscriptions').delete().in('endpoint', expired);
             console.log(`[cron] Removed ${expired.length} expired subscriptions`);
         }
-
-        console.log(`[cron] Sent to ${subs.length} subscribers`);
     } catch (err) {
         console.error('[cron] sendDailyCheckIn error:', err);
     }
 };
 
-// Fire at 7:30 AM UTC every day
-cron.schedule('30 7 * * *', sendDailyCheckIn, { timezone: 'Pacific/Auckland' });
+// Run every 15 minutes — each invocation only touches users in their 7:30 AM window
+cron.schedule('*/15 * * * *', sendDailyCheckIn);
 
 // Start server
 app.listen(PORT, () => {

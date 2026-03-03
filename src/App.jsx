@@ -258,7 +258,7 @@ function App() {
         await fetch(`${API_BASE_URL}/api/push/subscribe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: session.user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth })
+          body: JSON.stringify({ userId: session.user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
         });
       } catch (err) {
         console.warn('Push subscription failed (non-fatal):', err.message);
