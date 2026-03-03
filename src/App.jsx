@@ -558,10 +558,6 @@ function App() {
     fats: Math.max(0, (userMacroPlan?.fats || 70) - consumedMacros.fats)
   };
 
-  if (!isOnboarded) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
-
   const handleLogHistoricalMeal = (meal) => {
     setConsumedMacros(prev => ({
       calories: prev.calories + meal.macros.cals,
