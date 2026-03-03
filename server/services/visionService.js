@@ -144,9 +144,10 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         const modelCascade = [
             { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
-            { model: 'gemini-3.0-flash', attempts: 2, delay: 2000 },
+            { model: 'gemini-3.1-flash-preview', attempts: 2, delay: 2000 },
         ];
 
+        let lastRetryableError;
         let lastError;
         for (const tier of modelCascade) {
             let tierSucceeded = false;
@@ -170,13 +171,16 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
                     lastError = err;
                     const msg = (err.message || '').toLowerCase();
                     const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
-                    if (!isRetryable) { tierSucceeded = true; break; } // Non-transient — skip to throw
+                    if (isRetryable) {
+                        lastRetryableError = err; // keep the helpful 503 message
+                    } else {
+                        break; // 404 or other non-transient error — skip remaining attempts in this tier
+                    }
                 }
             }
-            if (tierSucceeded) break; // Non-retryable error — don't try flash
         }
 
-        throw lastError;
+        throw lastRetryableError || lastError;
     } catch (error) {
         console.error("Vision Error:", error);
         const msg = (error.message || '');

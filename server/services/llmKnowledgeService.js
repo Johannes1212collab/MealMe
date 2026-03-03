@@ -141,7 +141,7 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
         const sleep = ms => new Promise(r => setTimeout(r, ms));
         const modelCascade = [
             { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
-            { model: 'gemini-3.0-flash', attempts: 2, delay: 2000 },
+            { model: 'gemini-3.1-flash-preview', attempts: 2, delay: 2000 },
         ];
 
         let parsedData;
