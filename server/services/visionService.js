@@ -140,29 +140,40 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             { text: prompt }
         ];
 
-        // Retry up to 3 times on transient 503 "high demand" errors
+        // Model cascade: try pro first, fall back to flash on sustained 503s
         const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const modelCascade = [
+            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
+            { model: 'gemini-3.0-flash', attempts: 2, delay: 2000 },
+        ];
+
         let lastError;
-        for (let attempt = 0; attempt < 5; attempt++) {
-            if (attempt > 0) {
-                const delay = attempt * 3000; // 3s, 6s, 9s, 12s
-                console.warn(`Gemini 503 on attempt ${attempt}, retrying in ${delay}ms…`);
-                await sleep(delay);
+        for (const tier of modelCascade) {
+            let tierSucceeded = false;
+            for (let attempt = 0; attempt < tier.attempts; attempt++) {
+                if (attempt > 0) {
+                    console.warn(`${tier.model} 503 on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
+                    await sleep(tier.delay);
+                }
+                try {
+                    const response = await ai.models.generateContent({
+                        model: tier.model,
+                        contents,
+                        config: { responseMimeType: 'application/json' }
+                    });
+                    const parsedData = JSON.parse(response.text);
+                    if (tier.model !== 'gemini-3.1-pro-preview') {
+                        console.info(`Used fallback model: ${tier.model}`);
+                    }
+                    return { status: 'success', data: parsedData };
+                } catch (err) {
+                    lastError = err;
+                    const msg = (err.message || '').toLowerCase();
+                    const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
+                    if (!isRetryable) { tierSucceeded = true; break; } // Non-transient — skip to throw
+                }
             }
-            try {
-                const response = await ai.models.generateContent({
-                    model: 'gemini-3.1-pro-preview',
-                    contents,
-                    config: { responseMimeType: 'application/json' }
-                });
-                const parsedData = JSON.parse(response.text);
-                return { status: 'success', data: parsedData };
-            } catch (err) {
-                lastError = err;
-                const msg = (err.message || '').toLowerCase();
-                const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
-                if (!isRetryable) break; // Don't retry on non-transient errors
-            }
+            if (tierSucceeded) break; // Non-retryable error — don't try flash
         }
 
         throw lastError;

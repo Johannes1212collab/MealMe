@@ -138,15 +138,40 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             }
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-pro-preview',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json"
-            }
-        });
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const modelCascade = [
+            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
+            { model: 'gemini-3.0-flash', attempts: 2, delay: 2000 },
+        ];
 
-        const parsedData = JSON.parse(response.text);
+        let parsedData;
+        let lastError;
+        outer: for (const tier of modelCascade) {
+            for (let attempt = 0; attempt < tier.attempts; attempt++) {
+                if (attempt > 0) {
+                    console.warn(`${tier.model} 503 on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
+                    await sleep(tier.delay);
+                }
+                try {
+                    const response = await ai.models.generateContent({
+                        model: tier.model,
+                        contents: prompt,
+                        config: { responseMimeType: 'application/json' }
+                    });
+                    parsedData = JSON.parse(response.text);
+                    if (tier.model !== 'gemini-3.1-pro-preview') {
+                        console.info(`Used fallback model: ${tier.model}`);
+                    }
+                    break outer;
+                } catch (err) {
+                    lastError = err;
+                    const msg = (err.message || '').toLowerCase();
+                    const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
+                    if (!isRetryable) break outer;
+                }
+            }
+        }
+        if (!parsedData) throw lastError;
 
         return {
             status: 'success',
