@@ -420,11 +420,11 @@ function App() {
     }
 
     if (backendResponse.error || !backendResponse.name) {
-      const errMsg = backendResponse.message || 'Analysis failed';
-      console.error('Vision error:', errMsg);
+      const errMsg = backendResponse.message || JSON.stringify(backendResponse) || 'Analysis failed — no data returned';
+      console.error('Vision error (full response):', JSON.stringify(backendResponse, null, 2));
       setShowAnalysis(false);
-      setCameraErrorMsg(errMsg);
-      setTimeout(() => setCameraErrorMsg(''), 6000);
+      setCameraErrorMsg(`Vision error: ${errMsg}`);
+      setTimeout(() => setCameraErrorMsg(''), 10000);
       if ('speechSynthesis' in window) {
         synthRef.current.cancel();
         const utterance = new SpeechSynthesisUtterance("Sorry, I had trouble analyzing that image.");
