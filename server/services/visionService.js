@@ -140,42 +140,42 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             { text: prompt }
         ];
 
-        // Model cascade: try pro first, fall back to flash on sustained 503s
+        // Model cascade: try pro first, fall back to flash on sustained errors
         const sleep = ms => new Promise(r => setTimeout(r, ms));
+        // Cap each individual Gemini call at 20s so all 5 attempts fit inside the 90s frontend limit
+        const withTimeout = (p, ms) => Promise.race([
+            p, new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini call timed out')), ms))
+        ]);
+        const isTransient = err => {
+            const msg = ((err?.message || '') + (err?.cause?.message || '')).toLowerCase();
+            return ['503', 'unavailable', 'high demand', 'fetch failed', 'headers timeout', 'und_err', 'timed out']
+                .some(s => msg.includes(s));
+        };
         const modelCascade = [
-            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
+            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 2000 },
             { model: 'gemini-3.1-flash-preview', attempts: 2, delay: 2000 },
         ];
 
         let lastRetryableError;
         let lastError;
         for (const tier of modelCascade) {
-            let tierSucceeded = false;
             for (let attempt = 0; attempt < tier.attempts; attempt++) {
                 if (attempt > 0) {
-                    console.warn(`${tier.model} 503 on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
+                    console.warn(`${tier.model} error on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
                     await sleep(tier.delay);
                 }
                 try {
-                    const response = await ai.models.generateContent({
-                        model: tier.model,
-                        contents,
-                        config: { responseMimeType: 'application/json' }
-                    });
+                    const response = await withTimeout(
+                        ai.models.generateContent({ model: tier.model, contents, config: { responseMimeType: 'application/json' } }),
+                        20000
+                    );
                     const parsedData = JSON.parse(response.text);
-                    if (tier.model !== 'gemini-3.1-pro-preview') {
-                        console.info(`Used fallback model: ${tier.model}`);
-                    }
+                    if (tier.model !== 'gemini-3.1-pro-preview') console.info(`Fallback: ${tier.model}`);
                     return { status: 'success', data: parsedData };
                 } catch (err) {
                     lastError = err;
-                    const msg = (err.message || '').toLowerCase();
-                    const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
-                    if (isRetryable) {
-                        lastRetryableError = err; // keep the helpful 503 message
-                    } else {
-                        break; // 404 or other non-transient error — skip remaining attempts in this tier
-                    }
+                    if (isTransient(err)) { lastRetryableError = err; }
+                    else break; // 404 / auth — stop this tier
                 }
             }
         }
@@ -184,7 +184,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
     } catch (error) {
         console.error("Vision Error:", error);
         const msg = (error.message || '');
-        const friendlyMsg = (msg.includes('503') || msg.includes('UNAVAILABLE'))
+        const friendlyMsg = (msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand') || msg.includes('timed out'))
             ? 'Gemini is under high demand right now — please try again in a moment.'
             : msg || 'Failed to analyze image';
         return { status: 'error', message: friendlyMsg };

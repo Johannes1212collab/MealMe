@@ -139,8 +139,16 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
         `;
 
         const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const withTimeout = (p, ms) => Promise.race([
+            p, new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini call timed out')), ms))
+        ]);
+        const isTransient = err => {
+            const msg = ((err?.message || '') + (err?.cause?.message || '')).toLowerCase();
+            return ['503', 'unavailable', 'high demand', 'fetch failed', 'headers timeout', 'und_err', 'timed out']
+                .some(s => msg.includes(s));
+        };
         const modelCascade = [
-            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 3000 },
+            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 2000 },
             { model: 'gemini-3.1-flash-preview', attempts: 2, delay: 2000 },
         ];
 
@@ -149,25 +157,20 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
         outer: for (const tier of modelCascade) {
             for (let attempt = 0; attempt < tier.attempts; attempt++) {
                 if (attempt > 0) {
-                    console.warn(`${tier.model} 503 on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
+                    console.warn(`${tier.model} error on attempt ${attempt + 1}, retrying in ${tier.delay}ms…`);
                     await sleep(tier.delay);
                 }
                 try {
-                    const response = await ai.models.generateContent({
-                        model: tier.model,
-                        contents: prompt,
-                        config: { responseMimeType: 'application/json' }
-                    });
+                    const response = await withTimeout(
+                        ai.models.generateContent({ model: tier.model, contents: prompt, config: { responseMimeType: 'application/json' } }),
+                        20000
+                    );
                     parsedData = JSON.parse(response.text);
-                    if (tier.model !== 'gemini-3.1-pro-preview') {
-                        console.info(`Used fallback model: ${tier.model}`);
-                    }
+                    if (tier.model !== 'gemini-3.1-pro-preview') console.info(`Fallback: ${tier.model}`);
                     break outer;
                 } catch (err) {
                     lastError = err;
-                    const msg = (err.message || '').toLowerCase();
-                    const isRetryable = msg.includes('503') || msg.includes('unavailable') || msg.includes('high demand');
-                    if (!isRetryable) break outer;
+                    if (!isTransient(err)) break outer; // 404/auth — stop everything
                 }
             }
         }
