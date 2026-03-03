@@ -9,6 +9,7 @@ import AnalysisResults from './components/AnalysisResults';
 import Onboarding from './components/Onboarding';
 import Auth from './components/Auth';
 import RetroAddMealModal from './components/RetroAddMealModal';
+import MealCountPrompt from './components/MealCountPrompt';
 import { supabase } from './utils/supabase';
 import { recalculateMacrosWithNewProtein } from './utils/calculations';
 import { API_BASE_URL } from './utils/api';
@@ -29,6 +30,8 @@ function App() {
 
   const [session, setSession] = useState(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [plannedMeals, setPlannedMeals] = useState(null); // null = not set today
+  const [showMealCountPrompt, setShowMealCountPrompt] = useState(false);
 
   // PWA install prompt
   useEffect(() => {
@@ -114,6 +117,7 @@ function App() {
             // Reset today's counters — do NOT load yesterday's stale meals/macros
             setConsumedMacros({ calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
             setMealResponses([]);
+            setPlannedMeals(null); // Reset meal plan on new day
 
             // Write clean state to Supabase immediately so syncToCloud sees correct data
             await supabase.from('profiles').update({
@@ -135,6 +139,10 @@ function App() {
           if (data.weekly_history && data.weekly_history.length > 0 && !isNewDay) {
             setWeeklyHistory(data.weekly_history);
             localStorage.setItem('mealme_weekly_history', JSON.stringify(data.weekly_history));
+          }
+          // Restore planned meals for today
+          if (data.planned_meals_date === new Date().toLocaleDateString() && data.planned_meals) {
+            setPlannedMeals(data.planned_meals);
           }
           // Always stamp today's date locally
           localStorage.setItem('mealme_current_date', todayStr);
@@ -195,6 +203,90 @@ function App() {
 
   // Ref for speech synthesis to allow cancellation
   const synthRef = useRef(window.speechSynthesis);
+
+  // ── Per-meal calorie budget (dynamic) ────────────────────────────────────────
+  // Recalculates every time meals are logged or planned count changes
+  const remainingMeals = Math.max((plannedMeals || 0) - mealResponses.length, 1);
+  // perMealTarget is null when no meal count set — AI uses default sizing
+  const perMealTarget = plannedMeals
+    ? Math.round((remainingMacros?.calories || 0) / remainingMeals)
+    : null;
+
+  // ── URL param reader (push notification tap-through) ─────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mealPlan = params.get('mealPlan');
+    const showPrompt = params.get('showMealPrompt');
+    if (mealPlan && mealPlan !== 'prompt') {
+      const count = mealPlan === '6plus' ? 6 : parseInt(mealPlan, 10);
+      if (!isNaN(count)) handleMealCountSelect(count);
+    } else if (showPrompt === '1' || mealPlan === 'prompt') {
+      setShowMealCountPrompt(true);
+    }
+    // Clean URL without reloading
+    if (params.has('mealPlan') || params.has('showMealPrompt')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Show meal count prompt on first open each day once onboarded ──────────────
+  useEffect(() => {
+    if (isOnboarded && !isProfileLoading && plannedMeals === null) {
+      setShowMealCountPrompt(true);
+    }
+  }, [isOnboarded, isProfileLoading, plannedMeals]);
+
+  // ── Register push subscription once user is signed in ────────────────────────
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const registerPush = async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        const reg = await navigator.serviceWorker.ready;
+        // Fetch VAPID public key from server
+        const keyRes = await fetch(`${API_BASE_URL}/api/push/vapid-key`);
+        const { publicKey } = await keyRes.json();
+        const existing = await reg.pushManager.getSubscription();
+        const sub = existing || await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+        const { endpoint, keys } = sub.toJSON();
+        await fetch(`${API_BASE_URL}/api/push/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: session.user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth })
+        });
+      } catch (err) {
+        console.warn('Push subscription failed (non-fatal):', err.message);
+      }
+    };
+    registerPush();
+  }, [session?.user?.id]);
+
+  // Helper: convert VAPID base64 public key to Uint8Array for push subscription
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = window.atob(base64);
+    return new Uint8Array([...raw].map(c => c.charCodeAt(0)));
+  };
+
+  const handleMealCountSelect = async (count) => {
+    setShowMealCountPrompt(false);
+    if (!count) return; // user skipped
+    setPlannedMeals(count);
+    // Persist to Supabase
+    if (session?.user?.id) {
+      await supabase.from('profiles').update({
+        planned_meals: count,
+        planned_meals_date: new Date().toLocaleDateString()
+      }).eq('id', session.user.id);
+    }
+  };
 
   // Sync state to Supabase whenever it changes
   // IMPORTANT: guard with isOnboarded — without this, the effect fires when session is first
@@ -305,7 +397,9 @@ function App() {
         body: JSON.stringify({
           restaurantName: userInput,
           remainingMacros: remainingMacros,
-          weeklyHistory: weeklyHistory
+          weeklyHistory: weeklyHistory,
+          perMealTarget: perMealTarget,
+          plannedMeals: plannedMeals
         })
       });
 
@@ -834,6 +928,8 @@ function App() {
           agentState={agentState}
           onCancel={handleAgentCancel}
           onSubmit={handleAIRequest}
+          perMealTarget={perMealTarget}
+          plannedMeals={plannedMeals}
         />
         <button className="floating-camera-btn" onClick={openCamera} aria-label="Scan Food">
           <Camera size={24} />
@@ -854,6 +950,8 @@ function App() {
         onClose={() => setIsCameraOpen(false)}
         onCapture={handlePhotoCaptured}
         remainingMacros={remainingMacros}
+        perMealTarget={perMealTarget}
+        plannedMeals={plannedMeals}
       />
 
       <AnalysisResults
@@ -883,6 +981,10 @@ function App() {
         }}>
           ⚠️ {cameraErrorMsg}
         </div>
+      )}
+
+      {showMealCountPrompt && isOnboarded && (
+        <MealCountPrompt onSelect={handleMealCountSelect} />
       )}
     </div>
   );

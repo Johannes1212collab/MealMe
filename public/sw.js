@@ -1,35 +1,81 @@
-// ─── NUCLEAR CACHE BUSTER (v4) ───────────────────────────────────────────────
-// This SW's only job is to:
-//   1. Delete every cache that exists
-//   2. Unregister itself so the next load has NO service worker
-//   3. Navigate all open clients to get genuinely fresh HTML + JS from the network
-//
-// Once the fresh code lands, main.jsx will NOT re-register a new SW,
-// so users stay cache-free until we deliberately add a new one.
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MealMe Service Worker ────────────────────────────────────────────────────
+// Handles push notifications and basic network-first caching.
 
-self.addEventListener('install', () => {
-    // Take control immediately — don't wait for old SW to finish
+const CACHE_NAME = 'mealme-v1';
+
+self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys()
-            // 1. Wipe every cache
-            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            // 2. Unregister this SW — next load will have no SW at all
-            .then(() => self.registration.unregister())
-            // 3. Force every open tab/window to reload via the network
-            .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-            .then((clients) => Promise.all(clients.map((c) => c.navigate(c.url))))
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        ).then(() => self.clients.claim())
     );
 });
 
-// While this transitional SW is briefly active, always go to the network
+// Network-first fetch (fall back to cache for GET requests)
 self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    if (url.hostname === self.location.hostname) {
-        event.respondWith(fetch(event.request));
+    if (event.request.method !== 'GET') return;
+    event.respondWith(
+        fetch(event.request)
+            .then(res => {
+                const clone = res.clone();
+                caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+                return res;
+            })
+            .catch(() => caches.match(event.request))
+    );
+});
+
+// ── Push event ────────────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+
+    const title = data.title || 'MealMe';
+    const options = {
+        body: data.body || '',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: data.tag || 'mealme-push',
+        renotify: true,
+        data: data.data || {},
+        actions: data.actions || [],
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Notification click ────────────────────────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    // action = '2' | '3' | '4' | '5' | '6plus' | '' (body tap)
+    const action = event.action;
+    let url = '/';
+
+    if (action && action !== '') {
+        // User tapped a quick-pick action button → go straight to app with count
+        url = `/?mealPlan=${action}`;
+    } else {
+        // User tapped the notification body → open app and show the modal
+        url = '/?showMealPrompt=1';
     }
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+            // Focus existing tab if open
+            for (const client of clients) {
+                if (new URL(client.url).origin === self.location.origin) {
+                    client.focus();
+                    client.navigate(url);
+                    return;
+                }
+            }
+            // Otherwise open a new tab
+            return self.clients.openWindow(url);
+        })
+    );
 });

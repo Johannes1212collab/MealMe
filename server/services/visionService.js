@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
  * Takes a base64 image (from the CameraScanner component) and asks Gemini 1.5 Pro
  * to estimate the caloric and macronutrient breakdown of the food pictured.
  */
-export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_KEY, recipeIntent) => {
+export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_KEY, recipeIntent, perMealTarget) => {
     try {
         if (!API_KEY || API_KEY === 'your_gemini_api_key_here') {
             throw new Error("Missing valid GEMINI_API_KEY in server/.env");
@@ -23,11 +23,16 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
         const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
 
         const kcalTarget = remainingMacros?.calories ? remainingMacros.calories : 600;
-        const mealMax = Math.min(kcalTarget, 800); // Cap single meals at 800kcal to prevent massive portions
+        // If user has set a meal plan, size suggestions to per-meal budget; otherwise cap at 800
+        const mealMax = perMealTarget ? Math.min(perMealTarget, kcalTarget) : Math.min(kcalTarget, 800);
+        const mealBudgetNote = perMealTarget
+            ? `The user plans multiple meals today. Per-meal calorie target: ~${perMealTarget} kcal. Size your suggestion to fit ONE meal slot — do not exhaust the daily budget in a single serving.`
+            : `Suggest a single-meal portion (max ${mealMax} kcal).`;
 
         const mealPrompt = `
             You are an expert nutritionist AI. Analyze the food in this image.
             CRITICAL INSTRUCTION ON UNITS: You MUST use METRIC units exclusively for all quantities, weights, and volumes.
+            ${mealBudgetNote}
 
             Return ONLY a valid JSON object matching this exact schema:
             {
@@ -49,6 +54,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             IMPORTANT PORTIONING MATH:
             1. Calculate the TOTAL macros for the entire cooked batch.
             2. Divide the total cooked batch into fractional portions (e.g., 1/2, 1/3, 1/4) so that ONE PORTION is a healthy, standard single-meal serving size (do not exceed ${mealMax} kcal for one sitting).
+            ${mealBudgetNote}
             3. The JSON macro fields ("cals", "protein", "carbs", "fats") MUST reflect the nutrients of ONE SINGLE PORTION, not the whole batch.
 
             CRITICAL INSTRUCTION ON UNITS: You MUST use METRIC units exclusively for all weights and volumes.
@@ -73,6 +79,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             1. Identify every ingredient visible in the photo and estimate its quantity (grams or ml)
             2. Calculate the TOTAL macro profile for a full batch of "${recipeIntent}" using those ingredients
             3. Choose a serving fraction (1/2, 1/3, 1/4 etc.) so ONE serving stays under ${mealMax} kcal
+            ${mealBudgetNote}
             4. Return macros for ONE SINGLE SERVING only
 
             Factor in the typical cooking method (oil absorbed when frying, water lost when boiling/baking).
@@ -102,6 +109,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             - Match the goal type: "${recipeIntent || 'full meal'}" (snack = light, 200-400 kcal; full meal = 400-800 kcal; dessert = sweet, treat)
             - Are the most macro-balanced and nutritious for the stated goal
             - Stay within the remaining macro budget as closely as possible
+            - ${mealBudgetNote}
 
             Return ONLY a valid JSON object in this exact format (no preamble, no markdown):
             {

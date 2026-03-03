@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
  * If a user is at a massive global chain (e.g. Starbucks), we don't even need to 
  * scrape it. Gemini already knows the Starbucks menu. We just ask it directly.
  */
-export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, weeklyHistory, API_KEY) => {
+export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, weeklyHistory, API_KEY, perMealTarget, plannedMeals) => {
     try {
         if (!API_KEY || API_KEY === 'your_gemini_api_key_here') {
             throw new Error("Missing valid GEMINI_API_KEY in server/.env");
@@ -20,6 +20,7 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
             The user just said: "${userInput}"
             Their remaining daily macros: ${JSON.stringify(remainingMacros)}
             Their meal history for the past 7 days: ${JSON.stringify(weeklyHistory)}
+            ${perMealTarget ? `Meal planning context: User has planned ${plannedMeals || 'multiple'} meals for today. Per-meal calorie target: ~${perMealTarget} kcal. Every food suggestion MUST fit within this per-meal budget — do NOT suggest options that would use up most of the daily remaining calories in one sitting.` : ''}
 
             YOUR JOB: Identify the user's INTENT from what they said. Do not pattern-match on keywords — reason about what they actually want.
             People say the same thing in hundreds of different ways. Their phrasing may be:

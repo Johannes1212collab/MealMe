@@ -3,7 +3,7 @@ import { X, Zap, Image as ImageIcon, Mic, MicOff, ChefHat, ArrowLeft, Send } fro
 import './CameraScanner.css';
 import { API_BASE_URL } from '../utils/api';
 
-export default function CameraScanner({ isOpen, onClose, onCapture, remainingMacros }) {
+export default function CameraScanner({ isOpen, onClose, onCapture, remainingMacros, perMealTarget, plannedMeals }) {
     const [isScanning, setIsScanning] = useState(false);
     const [scanMode, setScanMode] = useState('meal');
     const [scanStep, setScanStep] = useState('capture');
@@ -104,7 +104,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
             const response = await fetch(`${API_BASE_URL}/api/vision`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageBase64: base64String, mode, remainingMacros, recipeIntent: intent || undefined }),
+                body: JSON.stringify({ imageBase64: base64String, mode, remainingMacros, recipeIntent: intent || undefined, perMealTarget, plannedMeals }),
                 signal: controller.signal,
             });
             clearTimeout(timer);

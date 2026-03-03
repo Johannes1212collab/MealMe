@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Loader2, Volume2, X, Send, Keyboard } from 'lucide-react';
 import './VoiceAgent.css';
 
-export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmit }) {
+export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmit, perMealTarget, plannedMeals }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [textInput, setTextInput] = useState('');
     const [isListening, setIsListening] = useState(false);
@@ -93,7 +93,7 @@ export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmi
             recognitionRef.current.stop();
             setIsListening(false);
         }
-        onSubmit(textInput.trim());
+        onSubmit(textInput.trim(), { perMealTarget, plannedMeals });
         setTextInput('');
     };
 
