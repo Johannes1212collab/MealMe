@@ -35,7 +35,7 @@ import { getKnownRestaurantSuggestions, streamKnownRestaurantSuggestions } from 
 import { scrapeAndAnalyzeMenu } from './services/scraperService.js';
 import { analyzeDocument } from './services/documentService.js';
 import { correctFoodAnalysis } from './services/correctionService.js';
-import { sendPushToAll, vapidPublicKey } from './services/pushService.js';
+import { sendPush, sendPushToAll, vapidPublicKey } from './services/pushService.js';
 
 // Route 1: Camera Vision
 app.post('/api/vision', async (req, res) => {
