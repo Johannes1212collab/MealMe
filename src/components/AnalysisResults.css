@@ -7,23 +7,36 @@
     z-index: 400;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 .analysis-panel {
     background: rgba(21, 18, 32, 0.97);
-    border-top-left-radius: 28px;
-    border-top-right-radius: 28px;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
     padding: var(--spacing-lg);
     max-height: 90vh;
     overflow-y: auto;
     box-shadow:
-        0 -12px 48px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        0 12px 48px rgba(0, 0, 0, 0.6),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-bottom: none;
+    border-top: none;
+    animation: slideDown 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* Panel Header */
