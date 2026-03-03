@@ -6,12 +6,16 @@ const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL } = process.env;
 // don't crash the server at startup. Pushes simply won't send without them.
 let vapidReady = false;
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-    webpush.setVapidDetails(
-        VAPID_EMAIL || 'mailto:support@mealme.app',
-        VAPID_PUBLIC_KEY,
-        VAPID_PRIVATE_KEY
-    );
-    vapidReady = true;
+    try {
+        webpush.setVapidDetails(
+            VAPID_EMAIL || 'mailto:support@mealme.app',
+            VAPID_PUBLIC_KEY,
+            VAPID_PRIVATE_KEY
+        );
+        vapidReady = true;
+    } catch (err) {
+        console.warn('[pushService] VAPID setup failed — push disabled:', err.message);
+    }
 } else {
     console.warn('[pushService] VAPID keys not set — push notifications disabled.');
 }

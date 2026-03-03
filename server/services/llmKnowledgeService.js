@@ -181,8 +181,8 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
                 .some(s => msg.includes(s));
         };
         const modelCascade = [
-            { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 2000 },
-            { model: 'gemini-3-flash-preview', attempts: 2, delay: 2000 },
+            { model: 'gemini-2.0-flash', attempts: 2, delay: 1000 },
+            { model: 'gemini-1.5-pro', attempts: 2, delay: 1000 },
         ];
 
         let parsedData;
