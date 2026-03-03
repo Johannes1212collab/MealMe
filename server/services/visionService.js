@@ -150,7 +150,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
 
         // Model cascade: try pro first, fall back to flash on sustained errors
         const sleep = ms => new Promise(r => setTimeout(r, ms));
-        // Cap each individual Gemini call at 20s so all 5 attempts fit inside the 90s frontend limit
+        // Cap per-call at 55s so pro gets a real chance; total worst-case ~80s
         const withTimeout = (p, ms) => Promise.race([
             p, new Promise((_, rej) => setTimeout(() => rej(new Error('Gemini call timed out')), ms))
         ]);
@@ -160,8 +160,8 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
                 .some(s => msg.includes(s));
         };
         const modelCascade = [
-            { model: 'gemini-2.0-flash', attempts: 2, delay: 1000 },
-            { model: 'gemini-1.5-pro', attempts: 2, delay: 1000 },
+            { model: 'gemini-3.1-pro-preview', attempts: 1, delay: 0 },
+            { model: 'gemini-3-flash-preview', attempts: 2, delay: 1000 },
         ];
 
         let lastRetryableError;
@@ -175,7 +175,7 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
                 try {
                     const response = await withTimeout(
                         ai.models.generateContent({ model: tier.model, contents, config: { responseMimeType: 'application/json' } }),
-                        20000
+                        55000
                     );
                     const parsedData = JSON.parse(response.text);
                     if (tier.model !== 'gemini-3.1-pro-preview') console.info(`Fallback: ${tier.model}`);
