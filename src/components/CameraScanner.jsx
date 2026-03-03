@@ -9,10 +9,11 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     const [scanStep, setScanStep] = useState('capture');
     const [pendingImage, setPendingImage] = useState(null);
     const [recipeIntent, setRecipeIntent] = useState('');
-    const [menuMealType, setMenuMealType] = useState('full meal'); // 'snack' | 'full meal' | 'dessert'
+    const [menuMealType, setMenuMealType] = useState('full meal');
     const [isListeningIntent, setIsListeningIntent] = useState(false);
     const [cameraReady, setCameraReady] = useState(false);
     const [cameraError, setCameraError] = useState(false);
+    const [scanError, setScanError] = useState(null); // exact error string shown in-overlay
 
     const intentRecognitionRef = useRef(null);
     const galleryInputRef = useRef(null);
@@ -75,6 +76,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         setMenuMealType('full meal');
         setIsScanning(false);
         setIsListeningIntent(false);
+        setScanError(null);
     };
 
     const handleClose = () => {
@@ -92,6 +94,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
 
     const submitToAPI = async (base64String, mode, intent) => {
         setScanStep('scanning');
+        setScanError(null);
         setIsScanning(true);
         const controller = new AbortController();
         abortRef.current = controller;
@@ -107,14 +110,23 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
             clearTimeout(timer);
             const json = await response.json();
             setIsScanning(false);
-            resetState();
-            onCapture(mode, json.status === 'success' ? json.data : { error: true, message: json.message });
+            if (json.status === 'success') {
+                resetState();
+                onCapture(mode, json.data);
+            } else {
+                // Show error inside the overlay — don't close the camera
+                const errMsg = json.message || 'Analysis failed — please try again.';
+                setScanError(errMsg);
+                setScanStep('error');
+            }
         } catch (err) {
             clearTimeout(timer);
             setIsScanning(false);
-            resetState();
-            const msg = err.name === 'AbortError' ? 'Request timed out — please try again.' : 'Failed to connect';
-            onCapture(mode, { error: true, message: msg });
+            const msg = err.name === 'AbortError'
+                ? 'Request timed out (90s). The backend may be starting up — tap Retry.'
+                : `Network error: ${err.message || 'Failed to connect'}`;
+            setScanError(msg);
+            setScanStep('error');
         }
     };
 
@@ -196,6 +208,31 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     };
 
     if (!isOpen) return null;
+
+    // ── Error screen ───────────────────────────────────────────────
+    if (scanStep === 'error') {
+        return (
+            <div className="camera-overlay" style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, padding: '24px' }}>
+                <div style={{ fontSize: '2.5rem' }}>⚠️</div>
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ color: '#f08090', fontWeight: '700', fontSize: '1rem', marginBottom: 8 }}>Analysis Failed</p>
+                    <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.85rem', lineHeight: 1.5, maxWidth: 300 }}>
+                        {scanError || 'Unknown error — please try again.'}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    <button onClick={handleClose}
+                        style={{ padding: '10px 24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        Close
+                    </button>
+                    <button onClick={() => { setScanStep('capture'); setScanError(null); }}
+                        style={{ padding: '10px 24px', borderRadius: '20px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light), var(--accent-secondary))', color: '#0e0c13', fontFamily: 'var(--font-primary)', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer' }}>
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // ── Menu mealType step ─────────────────────────────────────────
     if (scanStep === 'menuIntent') {
