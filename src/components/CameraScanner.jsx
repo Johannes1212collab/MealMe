@@ -194,9 +194,9 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     // ── Menu mealType step ─────────────────────────────────────────
     if (scanStep === 'menuIntent') {
         const mealTypes = [
-            { id: 'snack', label: '🍎 Snack', desc: 'Light, 200–400 kcal' },
-            { id: 'full meal', label: '🍽️ Full Meal', desc: 'Balanced, 400–800 kcal' },
-            { id: 'dessert', label: '🍰 Dessert', desc: 'Sweet treat' },
+            { id: 'snack', label: 'Snack', desc: 'Light, 200–400 kcal' },
+            { id: 'full meal', label: 'Full Meal', desc: 'Balanced, 400–800 kcal' },
+            { id: 'dessert', label: 'Dessert', desc: 'Sweet treat' },
         ];
         return (
             <div className="camera-overlay">
@@ -369,7 +369,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                 <div className="mode-selector">
                     <button className={`mode-btn ${scanMode === 'meal' ? 'active' : ''}`} onClick={() => handleModeChange('meal')}>Meal</button>
                     <button className={`mode-btn ${scanMode === 'ingredients' ? 'active' : ''}`} onClick={() => handleModeChange('ingredients')}>Ingredients</button>
-                    <button className={`mode-btn ${scanMode === 'menu' ? 'active' : ''}`} onClick={() => handleModeChange('menu')}>Menu 🍽️</button>
+                    <button className={`mode-btn ${scanMode === 'menu' ? 'active' : ''}`} onClick={() => handleModeChange('menu')}>Menu</button>
                 </div>
                 <div className="camera-actions-row">
                     <button className="gallery-btn" onClick={() => galleryInputRef.current?.click()}>
