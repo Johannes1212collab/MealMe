@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Loader2, Volume2, X, Send, Keyboard } from 'lucide-react';
 import './VoiceAgent.css';
 
-export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmit, perMealTarget, plannedMeals }) {
+export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmit, perMealTarget, plannedMeals, streamingText }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [textInput, setTextInput] = useState('');
     const [isListening, setIsListening] = useState(false);
@@ -107,7 +107,15 @@ export default function VoiceAgent({ agentState, onAgentClick, onCancel, onSubmi
         <div className="voice-agent-container">
             {agentState !== 'idle' && (
                 <div className="voice-agent-status animate-fade-in">
-                    {getStatusText()}
+                    {streamingText
+                        ? (
+                            <span className="stream-text">
+                                {streamingText}
+                                <span className="stream-cursor">▋</span>
+                            </span>
+                        )
+                        : getStatusText()
+                    }
                 </div>
             )}
             {isExpanded ? (

@@ -221,3 +221,77 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
         };
     }
 };
+
+/**
+ * Streaming variant — writes Server-Sent Events directly to the Express res object.
+ * Event types:
+ *   {type:'status', text:'...'} — status label shown immediately
+ *   {type:'chunk',  text:'...'} — raw Gemini token as it streams
+ *   {type:'done',   result:{...}} — final parsed JSON result
+ *   {type:'error',  message:'...'} — on failure
+ */
+export const streamKnownRestaurantSuggestions = async (
+    userInput, remainingMacros, weeklyHistory, API_KEY,
+    perMealTarget, plannedMeals, res
+) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+    try {
+        if (!API_KEY || API_KEY === 'your_gemini_api_key_here') throw new Error('Missing GEMINI_API_KEY');
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
+
+        send({ type: 'status', text: 'Understanding your request...' });
+
+        const prompt = `
+            You are MealMe, a conversational AI nutrition assistant speaking with a real person.
+            The user just said: "${userInput}"
+            Remaining daily macros: ${JSON.stringify(remainingMacros)}
+            Meal history (7 days): ${JSON.stringify(weeklyHistory)}
+            ${perMealTarget ? `Meal plan: ${plannedMeals || 'multiple'} meals today. Per-meal target: ~${perMealTarget} kcal. Keep every suggestion within this budget.` : ''}
+
+            Identify the user's INTENT (log, suggestion, info, portion, multi_suggestion) and return strict JSON only.
+            Same intent rules and JSON schemas as always. No markdown, no preamble.
+        `;
+
+        send({ type: 'status', text: 'Checking your macros...' });
+
+        const streamModels = ['gemini-2.0-flash', 'gemini-3-flash-preview'];
+        let fullText = '';
+        let streamed = false;
+
+        for (const model of streamModels) {
+            try {
+                send({ type: 'status', text: 'Building your suggestion...' });
+                const stream = await ai.models.generateContentStream({
+                    model,
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                });
+                for await (const chunk of stream) {
+                    const text = chunk.text();
+                    fullText += text;
+                    send({ type: 'chunk', text });
+                }
+                streamed = true;
+                break;
+            } catch (err) {
+                console.warn(`[stream] ${model} failed: ${err.message}`);
+            }
+        }
+
+        if (!streamed || !fullText) throw new Error('All stream models failed');
+
+        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('No JSON found in streamed response');
+        const result = JSON.parse(jsonMatch[0]);
+        send({ type: 'done', result });
+    } catch (err) {
+        send({ type: 'error', message: err.message });
+    } finally {
+        res.end();
+    }
+};

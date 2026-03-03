@@ -31,7 +31,7 @@ app.get('/api/health', (req, res) => {
 
 import { analyzeFoodImage } from './services/visionService.js';
 import { getChainMenuFromDB } from './services/databaseService.js';
-import { getKnownRestaurantSuggestions } from './services/llmKnowledgeService.js';
+import { getKnownRestaurantSuggestions, streamKnownRestaurantSuggestions } from './services/llmKnowledgeService.js';
 import { scrapeAndAnalyzeMenu } from './services/scraperService.js';
 import { analyzeDocument } from './services/documentService.js';
 import { correctFoodAnalysis } from './services/correctionService.js';
@@ -70,7 +70,15 @@ app.post('/api/llm-knowledge', async (req, res) => {
     }
 });
 
-// Route 4: Live Web Scraper
+// Route 3b: LLM Knowledge — streaming SSE variant
+app.post('/api/llm-knowledge-stream', async (req, res) => {
+    const { restaurantName, remainingMacros, weeklyHistory, perMealTarget, plannedMeals } = req.body;
+    await streamKnownRestaurantSuggestions(
+        restaurantName, remainingMacros, weeklyHistory,
+        process.env.GEMINI_API_KEY, perMealTarget, plannedMeals, res
+    );
+});
+
 app.post('/api/scrape', async (req, res) => {
     try {
         const { url } = req.body;

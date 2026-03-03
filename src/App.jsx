@@ -192,6 +192,7 @@ function App() {
   const [agentState, setAgentState] = useState('idle'); // idle, listening, processing, speaking
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [suggestionData, setSuggestionData] = useState(null);
+  const [streamingText, setStreamingText] = useState(''); // live SSE token accumulator
 
   // New States for Camera feature
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -386,6 +387,7 @@ function App() {
 
     setAgentState('processing');
     setShowRecommendations(false);
+    setStreamingText('');
 
     const remainingMacros = {
       calories: Math.max(0, userMacroPlan.calories - consumedMacros.calories),
@@ -394,29 +396,77 @@ function App() {
       fats: Math.max(0, userMacroPlan.fats - consumedMacros.fats)
     };
 
+    const storedHistory = localStorage.getItem('mealme_weekly_history');
+    const weeklyHistory = storedHistory ? JSON.parse(storedHistory) : [];
+    const body = JSON.stringify({
+      restaurantName: userInput, remainingMacros, weeklyHistory, perMealTarget, plannedMeals
+    });
+
+    let streamSucceeded = false;
     try {
-      const storedHistory = localStorage.getItem('mealme_weekly_history');
-      const weeklyHistory = storedHistory ? JSON.parse(storedHistory) : [];
-
-      const response = await fetch(`${API_BASE_URL}/api/llm-knowledge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurantName: userInput,
-          remainingMacros: remainingMacros,
-          weeklyHistory: weeklyHistory,
-          perMealTarget: perMealTarget,
-          plannedMeals: plannedMeals
-        })
+      // ── Streaming path ─────────────────────────────────────────────
+      const resp = await fetch(`${API_BASE_URL}/api/llm-knowledge-stream`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body
       });
+      if (!resp.ok || !resp.body) throw new Error('Stream not available');
 
-      const data = await response.json();
-      console.log("Backend AI Response:", data);
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let accumulatedMessage = ''; // the extracted message text
 
-      handleAIResponse(data);
-    } catch (err) {
-      console.error("Failed to hit backend LLM service:", err);
-      handleAIResponse({ error: true });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines
+        const lines = buf.split('\n');
+        buf = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6));
+            if (ev.type === 'status') {
+              // Show status label while Gemini is thinking
+              setStreamingText(ev.text);
+            } else if (ev.type === 'chunk') {
+              // Accumulate tokens; try to extract the "message" field as it streams
+              accumulatedMessage += ev.text;
+              // Try to pull out the message field value for a nicer display
+              const msgMatch = accumulatedMessage.match(/"message"\s*:\s*"([^"]*)/s);
+              if (msgMatch) setStreamingText(msgMatch[1]);
+            } else if (ev.type === 'done') {
+              streamSucceeded = true;
+              setStreamingText('');
+              console.log('Stream done:', ev.result);
+              handleAIResponse({ status: 'success', data: ev.result });
+            } else if (ev.type === 'error') {
+              throw new Error(ev.message);
+            }
+          } catch { /* ignore parse errors on partial chunks */ }
+        }
+      }
+    } catch (streamErr) {
+      console.warn('Stream failed, falling back to standard endpoint:', streamErr.message);
+    }
+
+    if (!streamSucceeded) {
+      // ── Fallback: non-streaming endpoint ─────────────────────────────────
+      setStreamingText('Thinking...');
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/llm-knowledge`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body
+        });
+        const data = await response.json();
+        handleAIResponse(data);
+      } catch (err) {
+        console.error('Fallback also failed:', err);
+        handleAIResponse({ error: true });
+      } finally {
+        setStreamingText('');
+      }
     }
   };
 
@@ -937,6 +987,7 @@ function App() {
           onSubmit={handleAIRequest}
           perMealTarget={perMealTarget}
           plannedMeals={plannedMeals}
+          streamingText={streamingText}
         />
         <button className="floating-camera-btn" onClick={openCamera} aria-label="Scan Food">
           <Camera size={24} />

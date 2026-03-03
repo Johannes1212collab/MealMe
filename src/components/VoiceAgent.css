@@ -14,7 +14,41 @@
     color: var(--text-secondary);
     font-weight: 500;
     text-align: center;
-    height: 20px;
+    min-height: 20px;
+    max-height: 80px;
+    overflow: hidden;
+    padding: 0 12px;
+    line-height: 1.4;
+    transition: max-height 0.3s ease;
+}
+
+/* Streaming typewriter text */
+.stream-text {
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 400;
+    line-height: 1.45;
+    display: inline;
+}
+
+.stream-cursor {
+    display: inline-block;
+    margin-left: 1px;
+    color: var(--primary-light, #e79c4a);
+    animation: blink-cursor 0.7s step-end infinite;
+    font-weight: 300;
+}
+
+@keyframes blink-cursor {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }
 
 .animate-fade-in {
