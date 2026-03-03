@@ -310,7 +310,6 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                             value={recipeIntent}
                             onChange={e => setRecipeIntent(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleIntentSubmit()}
-                            autoFocus
                             style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '12px 14px', color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'var(--font-primary)', outline: 'none' }}
                         />
                         <button onClick={toggleVoiceIntent}
