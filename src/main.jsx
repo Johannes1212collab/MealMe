@@ -9,21 +9,13 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Service worker: trigger the self-destructing SW to wipe old caches,
-// then deliberately do NOT re-register so users always get fresh code.
+// Register service worker for push notifications and offline caching
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      // If an old SW exists, register the new self-destructing SW.
-      // It will unregister itself and reload the page with fresh JS.
-      const existing = await navigator.serviceWorker.getRegistration('/');
-      if (existing) {
-        // Register the self-destructing SW which will wipe caches and reload
-        await navigator.serviceWorker.register('/sw.js');
-      }
-      // If no existing SW, we're already clean — no need to register anything
+      await navigator.serviceWorker.register('/sw.js');
     } catch (err) {
-      console.warn('SW operation failed:', err);
+      console.warn('SW registration failed:', err);
     }
   });
 }

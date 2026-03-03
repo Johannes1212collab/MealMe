@@ -207,9 +207,13 @@ function App() {
   // ── Per-meal calorie budget (dynamic) ────────────────────────────────────────
   // Recalculates every time meals are logged or planned count changes
   const remainingMeals = Math.max((plannedMeals || 0) - mealResponses.length, 1);
+  // Compute remaining calories from state so perMealTarget is always valid
+  const remainingCalsToday = userMacroPlan
+    ? Math.max(0, (userMacroPlan.calories || 0) - (consumedMacros.calories || 0))
+    : 0;
   // perMealTarget is null when no meal count set — AI uses default sizing
   const perMealTarget = plannedMeals
-    ? Math.round((remainingMacros?.calories || 0) / remainingMeals)
+    ? Math.round(remainingCalsToday / remainingMeals) || null
     : null;
 
   // ── URL param reader (push notification tap-through) ─────────────────────────
@@ -245,7 +249,10 @@ function App() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') return;
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('SW not ready')), 10000))
+        ]);
         // Fetch VAPID public key from server
         const keyRes = await fetch(`${API_BASE_URL}/api/push/vapid-key`);
         const { publicKey } = await keyRes.json();
