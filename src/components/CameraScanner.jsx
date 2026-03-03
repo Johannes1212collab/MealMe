@@ -207,11 +207,6 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                     <div className="camera-title">What are you after?</div>
                     <button className="icon-btn" onClick={handleClose}><X size={24} /></button>
                 </div>
-                {pendingImage && (
-                    <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'center' }}>
-                        <img src={pendingImage.previewUrl} alt="Menu" style={{ width: '100%', maxHeight: 100, objectFit: 'cover', borderRadius: '14px', opacity: 0.8 }} />
-                    </div>
-                )}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', gap: '14px', overflowY: 'auto' }}>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.4, textAlign: 'center' }}>
                         Tell MealMe what kind of option you're looking for and it'll pick the best match from the menu.
