@@ -149,7 +149,7 @@ export const getKnownRestaurantSuggestions = async (userInput, remainingMacros, 
         };
         const modelCascade = [
             { model: 'gemini-3.1-pro-preview', attempts: 3, delay: 2000 },
-            { model: 'gemini-3.1-flash-preview', attempts: 2, delay: 2000 },
+            { model: 'gemini-3-flash-preview', attempts: 2, delay: 2000 },
         ];
 
         let parsedData;
