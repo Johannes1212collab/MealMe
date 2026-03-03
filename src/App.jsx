@@ -8,6 +8,7 @@ import CameraScanner from './components/CameraScanner';
 import AnalysisResults from './components/AnalysisResults';
 import Onboarding from './components/Onboarding';
 import Auth from './components/Auth';
+import RetroAddMealModal from './components/RetroAddMealModal';
 import { supabase } from './utils/supabase';
 import { recalculateMacrosWithNewProtein } from './utils/calculations';
 import { API_BASE_URL } from './utils/api';
@@ -188,6 +189,9 @@ function App() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysisType, setAnalysisType] = useState('meal'); // 'meal' or 'ingredients'
+
+  // Retro-add meal modal state
+  const [retroAddTarget, setRetroAddTarget] = useState(null); // { date: string } | null
 
   // Ref for speech synthesis to allow cancellation
   const synthRef = useRef(window.speechSynthesis);
@@ -574,6 +578,67 @@ function App() {
     }]);
   };
 
+  // ── Delete a meal from TODAY's log ─────────────────────────────────
+  const handleDeleteTodayMeal = (mealId) => {
+    setMealResponses(prev => {
+      const updated = prev.filter(m => m.id !== mealId);
+      // Recalculate consumed totals from scratch
+      const totals = updated.reduce((acc, m) => ({
+        calories: acc.calories + (m.macros?.cals || 0),
+        protein: acc.protein + (m.macros?.protein || 0),
+        carbs: acc.carbs + (m.macros?.carbs || 0),
+        fiber: (acc.fiber || 0) + (m.macros?.fiber || 0),
+        fats: acc.fats + (m.macros?.fats || 0),
+      }), { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });
+      setConsumedMacros(totals);
+      return updated;
+    });
+  };
+
+  // ── Delete a meal from a HISTORICAL day ───────────────────────────
+  const handleDeleteHistoricalMeal = (date, mealIndex) => {
+    setWeeklyHistory(prev => {
+      const updated = prev.map(day => {
+        if (day.date !== date) return day;
+        const newMeals = day.meals.filter((_, i) => i !== mealIndex);
+        const newConsumedCals = newMeals.reduce((sum, m) => sum + (m.macros?.cals || 0), 0);
+        return { ...day, meals: newMeals, consumedCals: newConsumedCals };
+      });
+      // Persist to Supabase immediately
+      if (session) {
+        supabase.from('profiles').update({ weekly_history: updated }).eq('id', session.user.id);
+      }
+      return updated;
+    });
+  };
+
+  // ── Add a meal retroactively to a past day ────────────────────────
+  const handleRetroAddMeal = (date, mealData) => {
+    setWeeklyHistory(prev => {
+      const updated = prev.map(day => {
+        if (day.date !== date) return day;
+        const newMeal = {
+          id: Date.now(),
+          time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+          desc: mealData.desc,
+          status: 'completed',
+          macros: mealData.macros,
+          originalMacros: mealData.macros,
+          portionMultiplier: 1
+        };
+        const newMeals = [...(day.meals || []), newMeal];
+        const newConsumedCals = newMeals.reduce((sum, m) => sum + (m.macros?.cals || 0), 0);
+        return { ...day, meals: newMeals, consumedCals: newConsumedCals };
+      });
+      // Persist to Supabase immediately
+      if (session) {
+        supabase.from('profiles').update({ weekly_history: updated }).eq('id', session.user.id);
+      }
+      return updated;
+    });
+    setRetroAddTarget(null);
+  };
+
   const handleUpdateCoachPlan = (newPlan) => {
     setUserMacroPlan(newPlan);
   };
@@ -734,6 +799,9 @@ function App() {
           onReaddMeal={handleReaddMeal}
           onCoachPlanUpdate={handleUpdateCoachPlan}
           onEditMealPortion={handleEditMealPortion}
+          onDeleteTodayMeal={handleDeleteTodayMeal}
+          onDeleteHistoricalMeal={handleDeleteHistoricalMeal}
+          onRetroAddOpen={(date) => setRetroAddTarget({ date })}
         />  </main>
 
       <div className="action-bar">
@@ -769,6 +837,13 @@ function App() {
         resultData={suggestionData}
         onAdd={handleAddFoodToPlan}
         onResultUpdate={(corrected) => setSuggestionData(corrected)}
+      />
+
+      <RetroAddMealModal
+        isOpen={!!retroAddTarget}
+        targetDate={retroAddTarget?.date}
+        onClose={() => setRetroAddTarget(null)}
+        onConfirm={(mealData) => handleRetroAddMeal(retroAddTarget.date, mealData)}
       />
       {/* Camera analysis error toast */}
       {cameraErrorMsg && (

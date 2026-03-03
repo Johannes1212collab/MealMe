@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw, ClipboardList, Upload, Loader2 } from 'lucide-react';
+import { Target, Flame, Activity, Settings2, ChevronDown, ChevronUp, CalendarDays, RotateCcw, ClipboardList, Upload, Loader2, Trash2, PlusCircle } from 'lucide-react';
 import { API_BASE_URL } from '../utils/api';
 import './Dashboard.css';
 
-export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion }) {
+export default function Dashboard({ macroPlan, consumedMacros, mealResponses, userName, weeklyHistory = [], onPlanUpdate, onReaddMeal, onCoachPlanUpdate, onEditMealPortion, onDeleteTodayMeal, onDeleteHistoricalMeal, onRetroAddOpen }) {
     const [isEditingProtein, setIsEditingProtein] = useState(false); // kept for prop compatibility
     const [expandedMealIndex, setExpandedMealIndex] = useState(null);
     const [editingMacro, setEditingMacro] = useState(null); // 'protein' | 'carbs' | 'fats'
@@ -397,38 +397,71 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                                         </div>
                                                     )}
                                                 </div>
-                                                {meal.macros && (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (onLogHistoricalMeal) {
-                                                                onLogHistoricalMeal(meal);
-                                                                setSelectedHistoryDate(null);
-                                                            }
-                                                        }}
-                                                        style={{
-                                                            background: 'linear-gradient(135deg, var(--primary-light) 0%, #00d2ff 100%)',
-                                                            border: 'none',
-                                                            borderRadius: '8px',
-                                                            padding: '6px 12px',
-                                                            color: '#000',
-                                                            fontWeight: '700',
-                                                            fontSize: '0.8rem',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                            fontFamily: 'var(--font-primary)'
-                                                        }}
-                                                    >
-                                                        <RotateCcw size={14} /> Log
-                                                    </button>
-                                                )}
+                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                    {meal.macros && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (onLogHistoricalMeal) {
+                                                                    onLogHistoricalMeal(meal);
+                                                                    setSelectedHistoryDate(null);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, var(--primary-light) 0%, #00d2ff 100%)',
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                padding: '6px 12px',
+                                                                color: '#000',
+                                                                fontWeight: '700',
+                                                                fontSize: '0.8rem',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                fontFamily: 'var(--font-primary)'
+                                                            }}
+                                                        >
+                                                            <RotateCcw size={14} /> Log
+                                                        </button>
+                                                    )}
+                                                    {onDeleteHistoricalMeal && (
+                                                        <button
+                                                            onClick={() => onDeleteHistoricalMeal(selectedHistoryDate, index)}
+                                                            title="Delete meal"
+                                                            style={{
+                                                                background: 'rgba(240,128,144,0.1)',
+                                                                border: '1px solid rgba(240,128,144,0.25)',
+                                                                borderRadius: '8px',
+                                                                padding: '6px 10px',
+                                                                color: '#f08090',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                fontSize: '0.8rem',
+                                                                fontFamily: 'var(--font-primary)'
+                                                            }}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', margin: '20px 0' }}>No meals logged on this date.</p>
+                            )}
+                            {/* Retro-add button for this chip-selected date */}
+                            {onRetroAddOpen && (
+                                <button
+                                    className="retro-add-day-btn"
+                                    style={{ marginTop: '10px' }}
+                                    onClick={() => onRetroAddOpen(selectedHistoryDate)}
+                                >
+                                    <PlusCircle size={13} /> Add Meal to {selectedHistoryDate}
+                                </button>
                             )}
                         </div>
                     )}
@@ -455,7 +488,19 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                 <li key={index} className={`plan-item ${meal.status === 'completed' ? 'completed' : 'pending'} ${isExpanded ? 'expanded' : ''}`}>
                                     <div className="plan-item-header" onClick={() => hasMacros && toggleMealExpand(index)} style={{ cursor: hasMacros ? 'pointer' : 'default' }}>
                                         <div className="plan-time">{meal.time}</div>
-                                        <div className="plan-desc">{meal.desc}</div>
+                                        <div className="plan-desc" style={{ flex: 1 }}>{meal.desc}</div>
+                                        {/* Delete button */}
+                                        {onDeleteTodayMeal && meal.id && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onDeleteTodayMeal(meal.id); }}
+                                                title="Delete meal"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(240,128,144,0.6)', padding: '2px 4px', display: 'flex', alignItems: 'center', flexShrink: 0, borderRadius: '6px', transition: 'color 0.2s' }}
+                                                onMouseEnter={e => e.currentTarget.style.color = '#f08090'}
+                                                onMouseLeave={e => e.currentTarget.style.color = 'rgba(240,128,144,0.6)'}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
                                         {hasMacros && (
                                             <div className="expand-icon">
                                                 {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -544,9 +589,27 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                                                         <button className="readd-btn" onClick={() => onReaddMeal && onReaddMeal(meal)}>
                                                             <RotateCcw size={11} /> Re-add
                                                         </button>
+                                                        {onDeleteHistoricalMeal && (
+                                                            <button
+                                                                className="history-delete-btn"
+                                                                onClick={() => onDeleteHistoricalMeal(day.date, mIdx)}
+                                                                title="Delete meal"
+                                                            >
+                                                                <Trash2 size={11} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))
+                                        )}
+                                        {/* Add meal retroactively */}
+                                        {onRetroAddOpen && (
+                                            <button
+                                                className="retro-add-day-btn"
+                                                onClick={() => onRetroAddOpen(day.date)}
+                                            >
+                                                <PlusCircle size={13} /> Add Meal
+                                            </button>
                                         )}
                                     </div>
                                 )}
