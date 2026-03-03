@@ -184,7 +184,7 @@ const sendDailyCheckIn = async () => {
 };
 
 // Fire at 7:30 AM UTC every day
-cron.schedule('30 7 * * *', sendDailyCheckIn, { timezone: 'UTC' });
+cron.schedule('30 7 * * *', sendDailyCheckIn, { timezone: 'Pacific/Auckland' });
 
 // Start server
 app.listen(PORT, () => {
