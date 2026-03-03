@@ -92,9 +92,42 @@ export const analyzeFoodImage = async (base64Image, mode, remainingMacros, API_K
             }
         ` : null;
 
+        // Menu-scan prompt: read a restaurant menu photo → suggest best options by mealType
+        const menuPrompt = `
+            You are an expert nutritionist AI. The user has photographed a restaurant menu.
+            Their goal is: ${recipeIntent || 'a balanced full meal'}.
+            Their remaining macros for the day: ${remainingMacros?.calories ?? 600} kcal, ${remainingMacros?.protein ?? 40}g protein, ${remainingMacros?.carbs ?? 60}g carbs, ${remainingMacros?.fats ?? 20}g fats.
+
+            Task: Read the menu in the image and identify the 2-3 BEST options that:
+            - Match the goal type: "${recipeIntent || 'full meal'}" (snack = light, 200-400 kcal; full meal = 400-800 kcal; dessert = sweet, treat)
+            - Are the most macro-balanced and nutritious for the stated goal
+            - Stay within the remaining macro budget as closely as possible
+
+            Return ONLY a valid JSON object in this exact format (no preamble, no markdown):
+            {
+                "type": "suggestion",
+                "response": "A single encouraging sentence explaining your top pick and why it suits their macros.",
+                "options": [
+                    {
+                        "title": "Menu item name exactly as written",
+                        "desc": "One sentence: why this is a good macro choice",
+                        "cals": estimated calories as integer,
+                        "protein": estimated protein grams as integer,
+                        "carbs": estimated carbs grams as integer,
+                        "fiber": estimated fiber grams as integer,
+                        "fats": estimated fats grams as integer,
+                        "match": "perfect" or "good"
+                    }
+                ],
+                "coachNote": "One short optional tip about this meal choice, or null"
+            }
+        `;
+
         // Pick the right prompt
         let prompt;
-        if (mode === 'ingredients' && recipeIntent) {
+        if (mode === 'menu') {
+            prompt = menuPrompt;
+        } else if (mode === 'ingredients' && recipeIntent) {
             prompt = recipePlanPrompt;
         } else if (mode === 'ingredients') {
             prompt = ingredientsPrompt;

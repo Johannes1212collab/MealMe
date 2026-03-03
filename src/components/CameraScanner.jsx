@@ -9,6 +9,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
     const [scanStep, setScanStep] = useState('capture');
     const [pendingImage, setPendingImage] = useState(null);
     const [recipeIntent, setRecipeIntent] = useState('');
+    const [menuMealType, setMenuMealType] = useState('full meal'); // 'snack' | 'full meal' | 'dessert'
     const [isListeningIntent, setIsListeningIntent] = useState(false);
     const [cameraReady, setCameraReady] = useState(false);
     const [cameraError, setCameraError] = useState(false);
@@ -65,6 +66,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         setScanStep('capture');
         setPendingImage(null);
         setRecipeIntent('');
+        setMenuMealType('full meal');
         setIsScanning(false);
         setIsListeningIntent(false);
     };
@@ -152,10 +154,11 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
         reader.onloadend = async () => {
             stopStream();
             const compressed = await compressImage(reader.result);
-            // Store preview (use original blob URL for display quality)
             setPendingImage({ base64: compressed, previewUrl });
             if (scanMode === 'ingredients') {
                 setScanStep('intent');
+            } else if (scanMode === 'menu') {
+                setScanStep('menuIntent');
             } else {
                 await submitToAPI(compressed, scanMode, null);
             }
@@ -188,7 +191,58 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
 
     if (!isOpen) return null;
 
-    // ── Intent screen ──────────────────────────────────────────────
+    // ── Menu mealType step ─────────────────────────────────────────
+    if (scanStep === 'menuIntent') {
+        const mealTypes = [
+            { id: 'snack', label: '🍎 Snack', desc: 'Light, 200–400 kcal' },
+            { id: 'full meal', label: '🍽️ Full Meal', desc: 'Balanced, 400–800 kcal' },
+            { id: 'dessert', label: '🍰 Dessert', desc: 'Sweet treat' },
+        ];
+        return (
+            <div className="camera-overlay">
+                <div className="camera-header camera-header-float">
+                    <button className="icon-btn" onClick={() => { setScanStep('capture'); setPendingImage(null); }}>
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div className="camera-title">What are you after?</div>
+                    <button className="icon-btn" onClick={handleClose}><X size={24} /></button>
+                </div>
+                {pendingImage && (
+                    <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'center' }}>
+                        <img src={pendingImage.previewUrl} alt="Menu" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: '14px', opacity: 0.8 }} />
+                    </div>
+                )}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', gap: '14px' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.4, textAlign: 'center' }}>
+                        Tell MealMe what kind of option you're looking for and it'll pick the best match from the menu.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {mealTypes.map(mt => (
+                            <button key={mt.id} onClick={() => setMenuMealType(mt.id)}
+                                style={{
+                                    padding: '14px 18px', borderRadius: '12px', border: `1px solid ${menuMealType === mt.id ? 'rgba(231,156,74,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                                    background: menuMealType === mt.id ? 'rgba(231,156,74,0.12)' : 'rgba(255,255,255,0.03)',
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    fontFamily: 'var(--font-primary)', transition: 'all 0.2s'
+                                }}
+                            >
+                                <span style={{ color: menuMealType === mt.id ? 'var(--primary-light)' : 'var(--text-primary)', fontWeight: '600', fontSize: '1rem' }}>{mt.label}</span>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{mt.desc}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => submitToAPI(pendingImage.base64, 'menu', menuMealType)}
+                        disabled={!pendingImage}
+                        style={{ marginTop: 'auto', padding: '14px', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, var(--primary-light), var(--accent-secondary))', color: '#0e0c13', fontWeight: '700', fontSize: '1rem', fontFamily: 'var(--font-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                        <ChefHat size={18} /> Find Best {menuMealType.charAt(0).toUpperCase() + menuMealType.slice(1)}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (scanStep === 'intent') {
         return (
             <div className="camera-overlay">
@@ -285,7 +339,9 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
             {/* Floating header */}
             <div className="camera-header camera-header-float">
                 <button className="icon-btn" onClick={handleClose}><X size={24} /></button>
-                <div className="camera-title">{scanMode === 'meal' ? 'Scan Food' : 'Scan Ingredients'}</div>
+                <div className="camera-title">
+                    {scanMode === 'meal' ? 'Scan Food' : scanMode === 'ingredients' ? 'Scan Ingredients' : 'Scan Menu'}
+                </div>
                 <button className="icon-btn"><Zap size={24} /></button>
             </div>
 
@@ -301,7 +357,9 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                                 ? 'Starting camera…'
                                 : scanMode === 'ingredients'
                                     ? 'Snap your ingredients'
-                                    : 'Point at your food'}
+                                    : scanMode === 'menu'
+                                        ? 'Point at the full menu page'
+                                        : 'Point at your food'}
                     </div>
                 </div>
             </div>
@@ -311,6 +369,7 @@ export default function CameraScanner({ isOpen, onClose, onCapture, remainingMac
                 <div className="mode-selector">
                     <button className={`mode-btn ${scanMode === 'meal' ? 'active' : ''}`} onClick={() => handleModeChange('meal')}>Meal</button>
                     <button className={`mode-btn ${scanMode === 'ingredients' ? 'active' : ''}`} onClick={() => handleModeChange('ingredients')}>Ingredients</button>
+                    <button className={`mode-btn ${scanMode === 'menu' ? 'active' : ''}`} onClick={() => handleModeChange('menu')}>Menu 🍽️</button>
                 </div>
                 <div className="camera-actions-row">
                     <button className="gallery-btn" onClick={() => galleryInputRef.current?.click()}>

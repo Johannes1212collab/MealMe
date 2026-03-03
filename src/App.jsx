@@ -396,6 +396,29 @@ function App() {
     setAnalysisType(mode);
     setIsCameraOpen(false);
 
+    // Menu mode returns a recommendations-format object (with .options), not a single food
+    if (mode === 'menu') {
+      if (backendResponse.error || !backendResponse.options?.length) {
+        const errMsg = backendResponse.message || 'Could not read menu — try a clearer photo.';
+        setCameraErrorMsg(errMsg);
+        setTimeout(() => setCameraErrorMsg(''), 6000);
+        return;
+      }
+      // Route to the Recommendations panel
+      setSuggestionData(backendResponse);
+      setShowRecommendations(true);
+      setAgentState('speaking');
+      if ('speechSynthesis' in window && backendResponse.response) {
+        synthRef.current.cancel();
+        const utterance = new SpeechSynthesisUtterance(backendResponse.response);
+        synthRef.current.speak(utterance);
+        utterance.onend = () => setAgentState('idle');
+      } else {
+        setTimeout(() => setAgentState('idle'), 2000);
+      }
+      return;
+    }
+
     if (backendResponse.error || !backendResponse.name) {
       const errMsg = backendResponse.message || 'Analysis failed';
       console.error('Vision error:', errMsg);
