@@ -128,11 +128,27 @@ function App() {
             }).eq('id', userId);
           } else {
             // Same day — restore normally
-            if (data.consumed_macros && Object.keys(data.consumed_macros).length > 0) {
-              setConsumedMacros(data.consumed_macros);
-            }
-            if (data.meal_responses && data.meal_responses.length > 0) {
-              setMealResponses(data.meal_responses);
+            const meals = (data.meal_responses && data.meal_responses.length > 0) ? data.meal_responses : null;
+            if (meals) setMealResponses(meals);
+
+            // Self-healing: recompute consumed totals from saved meal list if stored totals look wrong
+            // This fixes desyncs where consumed_macros was zeroed but meal_responses still has data
+            const storedMacros = data.consumed_macros;
+            const storedCals = storedMacros?.calories || 0;
+            const recomputedFromMeals = meals ? meals.reduce((acc, m) => ({
+              calories: acc.calories + (m.macros?.cals || 0),
+              protein: acc.protein + (m.macros?.protein || 0),
+              carbs: acc.carbs + (m.macros?.carbs || 0),
+              fiber: (acc.fiber || 0) + (m.macros?.fiber || 0),
+              fats: acc.fats + (m.macros?.fats || 0),
+            }), { calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 }) : null;
+
+            if (storedCals === 0 && recomputedFromMeals?.calories > 0) {
+              // consumedMacros is zeroed but meals exist — recompute from meals (self-heal)
+              console.warn('[MealMe] Detected consumed_macros desync — self-healing from meal_responses');
+              setConsumedMacros(recomputedFromMeals);
+            } else if (storedMacros && Object.keys(storedMacros).length > 0) {
+              setConsumedMacros(storedMacros);
             }
           }
 
