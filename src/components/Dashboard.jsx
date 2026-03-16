@@ -325,6 +325,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                 </div>
             </div>
 
+            {/* 7-DAY TRAILING AVERAGE — archived, re-enable when ready
             {weeklyHistory.length > 0 && (
                 <div className="weekly-progress-card glass-panel animate-slide-up" style={{ marginTop: '20px', padding: '20px', backgroundImage: 'radial-gradient(circle at top right, rgba(45, 212, 191, 0.1), transparent 70%)', border: '1px solid rgba(45, 212, 191, 0.2)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -333,7 +334,6 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                         </h4>
                         <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--bg-dark)', padding: '4px 10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>{weeklyHistory.length} Days Logged</span>
                     </div>
-
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                         <div>
                             <span style={{ display: 'block', fontSize: '2.2rem', fontWeight: '800', color: totalWeeklyDeficit > 0 ? 'var(--primary-light)' : 'var(--accent-red)', lineHeight: '1' }}>
@@ -350,6 +350,7 @@ export default function Dashboard({ macroPlan, consumedMacros, mealResponses, us
                     </div>
                 </div>
             )}
+            */}
 
             {weeklyHistory.length > 0 && (
                 <div className="history-browser glass-panel animate-slide-up" style={{ marginTop: '20px', padding: '20px' }}>
